@@ -12,7 +12,9 @@ module.exports = {
   async obtenerPorId(id) {
     return await Usuario.findByPk(id);
   },
-
+  async obtenerPorEmail(email) {
+    return await Usuario.findOne({ where: { email } });
+  },
   async eliminar(id) {
     const usuario = await Usuario.findByPk(id);
     if (!usuario) return null;
