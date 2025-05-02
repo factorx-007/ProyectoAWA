@@ -13,10 +13,18 @@ module.exports = (sequelize, DataTypes) => {
     },
     nombre: {
       type: DataTypes.STRING(55),
-      unique: true
+      unique: true,
+      allowNull: false,
+      validate: {
+        notEmpty: true
+      }
     },
     descripcion: {
-      type: DataTypes.STRING(255)
+      type: DataTypes.STRING(255),
+      allowNull: false,
+      validate: {
+        notEmpty: true
+      }
     }
   }, {
     sequelize,

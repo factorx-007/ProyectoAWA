@@ -8,15 +8,24 @@ module.exports = (sequelize, DataTypes) => {
     },
     id_motivo: {
       type: DataTypes.INTEGER,
-      allowNull: false
+      allowNull: false,
+      validate: {
+        notEmpty: true
+      }
     },
     texto: {
       type: DataTypes.TEXT,
-      allowNull: true
+      allowNull: false,
+      validate: {
+        notEmpty: true
+      }
     },
     estado: {
       type: DataTypes.STRING(1),
-      allowNull: false
+      allowNull: false,
+      validate: {
+        notEmpty: true
+      }
     }
   }, {
     tableName: 'denuncias',
@@ -25,7 +34,7 @@ module.exports = (sequelize, DataTypes) => {
 
   Denuncia.associate = function(models) {
     Denuncia.belongsTo(models.Interaccion, { foreignKey: 'id_denuncia' });
-    Denuncia.belongsTo(models.Motivos_denuncia, { foreignKey: 'id_motivo' });
+    Denuncia.belongsTo(models.MotivoDenuncia, { foreignKey: 'id_motivo' });
   };
 
   return Denuncia;

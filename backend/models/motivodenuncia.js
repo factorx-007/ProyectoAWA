@@ -1,24 +1,27 @@
 'use strict';
 const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
-  class motivos_denuncia extends Model {
+  class MotivoDenuncia extends Model {
     static associate(models) {
     }
   }
-  motivos_denuncia.init({
+  MotivoDenuncia.init({
     id_motivo: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true
     },
     nombre: {
-      type: DataTypes.STRING(55)
+      type: DataTypes.STRING(55),
+      validate: {
+        notEmpty: true
+      }
     }
   }, {
     sequelize,
-    modelName: 'Motivos_denuncia',
+    modelName: 'MotivoDenuncia',
     tableName: 'motivos_denuncia',
     timestamps: false
   });
-  return motivos_denuncia;
+  return MotivoDenuncia;
 };

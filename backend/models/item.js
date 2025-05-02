@@ -9,15 +9,24 @@ module.exports = (sequelize, DataTypes) => {
     },
     id_categoria: {
       type: DataTypes.INTEGER,
-      allowNull: false
+      allowNull: false,
+      validate: {
+        notEmpty: true
+      }
     },
     id_vendedor: {
       type: DataTypes.INTEGER,
-      allowNull: false
+      allowNull: false,
+      validate: {
+        notEmpty: true
+      }
     },
     nombre: {
       type: DataTypes.STRING(255),
-      allowNull: false
+      allowNull: false,
+      validate: {
+        notEmpty: true
+      }
     },
     fecha_y_hora: {
       type: DataTypes.DATE,
@@ -25,15 +34,24 @@ module.exports = (sequelize, DataTypes) => {
     },
     precio: {
       type: DataTypes.DOUBLE,
-      allowNull: false
+      allowNull: false,
+      validate: {
+        notEmpty: true
+      }
     },
     es_servicio: {
       type: DataTypes.BOOLEAN,
-      allowNull: false
+      allowNull: false,
+      validate: {
+        notEmpty: true
+      }
     },
     estado: {
       type: DataTypes.STRING(1),
-      allowNull: false
+      allowNull: false,
+      validate: {
+        notEmpty: true
+      }
     }
   }, {
     tableName: 'items',
@@ -41,7 +59,7 @@ module.exports = (sequelize, DataTypes) => {
   });
 
   Item.associate = function(models) {
-    Item.belongsTo(models.Categoria, { foreignKey: 'id_categoria' });//con "c" minuscúla sí funciona
+    Item.belongsTo(models.Categoria, { foreignKey: 'id_categoria' });
     Item.belongsTo(models.Usuario, { foreignKey: 'id_vendedor' });
   };
 
