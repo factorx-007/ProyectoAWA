@@ -1,24 +1,32 @@
+const bcrypt = require('bcryptjs');
+const BaseService = require('./BaseService');
 const { Usuario } = require('../models');
 
-module.exports = {
-  async obtenerTodos() {
-    return await Usuario.findAll();
-  },
-
-  async crear(data) {
-    return await Usuario.create(data);
-  },
-
-  async obtenerPorId(id) {
-    return await Usuario.findByPk(id);
-  },
-  async obtenerPorEmail(email) {
-    return await Usuario.findOne({ where: { email } });
-  },
-  async eliminar(id) {
-    const usuario = await Usuario.findByPk(id);
-    if (!usuario) return null;
-    await usuario.destroy();
-    return true;
+class UsuarioService extends BaseService {
+  constructor() {
+    super(Usuario);
   }
-};
+
+  async create(data) {
+    if (!data.contrasena) {
+      throw new Error("La contraseña es requerida");
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    data.contrasena = await bcrypt.hash(data.contrasena, salt);
+
+    return await super.create(data);
+  }
+
+  async validatePassword(email, plainPassword) {
+    const usuario = await Usuario.findOne({ where: { email } });
+    if (!usuario) return null;
+
+    const match = await bcrypt.compare(plainPassword, usuario.contrasena);
+    if (!match) return null;
+
+    return usuario;
+  }
+}
+
+module.exports = new UsuarioService();

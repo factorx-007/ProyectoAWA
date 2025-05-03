@@ -8,11 +8,17 @@ module.exports = (sequelize, DataTypes) => {
     },
     calificacion: {
       type: DataTypes.INTEGER,
-      allowNull: false
+      allowNull: false,
+      validate: {
+        notEmpty: true
+      }
     },
     comentario: {
       type: DataTypes.TEXT,
-      allowNull: true
+      allowNull: false,
+      validate: {
+        notEmpty: true
+      }
     }
   }, {
     tableName: 'calificaciones',
