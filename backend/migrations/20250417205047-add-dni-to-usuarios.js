@@ -4,12 +4,10 @@
 module.exports = {
   async up (queryInterface, Sequelize) {
     await queryInterface.addColumn('Usuarios', 'dni', {
-      type: Sequelize.INTEGER,
+      type: Sequelize.STRING,
       allowNull: false,
       unique: true,
-      validate: {
-        len: [8, 8]
-      }
+
     });
   },
 
