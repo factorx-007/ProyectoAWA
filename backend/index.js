@@ -1,4 +1,5 @@
 require('dotenv').config();
+const mongoose = require('mongoose');
 
 const express = require('express');
 const path = require('path');
@@ -11,6 +12,11 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
+mongoose.connect(process.env.URI)
+.then(() => {
+  console.log('🟢 Conectado a MongoDB, base de datos: ' + mongoose.connection.db.databaseName);
+  })
+.catch(err => console.error('🔴 Error al conectar a MongoDB', err));
 
 const usuarioRoutes = require('./routes/usuarioRoutes');
 const categoriaRoutes = require('./routes/categoriaRoutes');
@@ -25,6 +31,9 @@ const imgsRoutesUsers = express.static(path.join(__dirname, 'uploads', 'user_img
 const imgsRoutesItems = express.static(path.join(__dirname, 'uploads', 'item_imgs'));
 const uploadRoutes = require('./routes/uploadRoutes');//uploadRoutes tiene el middleware
 const authRoutes = require('./routes/authRoutes');
+
+const chatRoutes =  require('./routes/chatRoutes');
+const mensajeRoutes = require('./routes/mensajeRoutes');
 
 app.use(express.json());
 
@@ -53,6 +62,10 @@ app.use('/api/productos', authMiddleware, productoRoutes);
 app.use('/api/uploads/user_imgs', authMiddleware, imgsRoutesUsers);//obtener imágenes
 app.use('/api/uploads/item_imgs', authMiddleware, imgsRoutesItems);
 app.use('/api/upload-img', uploadRoutes);//añadir middleware
+
+//urls de mongoDB
+app.use('/api/chats', authMiddleware, chatRoutes);
+app.use('/api/mensajes', authMiddleware, mensajeRoutes);
 
 const PORT = 4000;
 
