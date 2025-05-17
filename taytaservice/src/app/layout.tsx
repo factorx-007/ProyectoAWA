@@ -1,7 +1,9 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { AuthProvider } from '../providers/AuthProvider'; // Si necesitas este provider
+import "@mantine/core/styles.css";
 import "./globals.css";
+import Providers from "./providers"; // nuevo componente cliente
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,11 +29,12 @@ export default function RootLayout({
     <html lang="es">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        suppressHydrationWarning={true} // Si sigues teniendo problemas de hidratación
+        suppressHydrationWarning={true}
       >
-        <AuthProvider> {/* Mantén el contexto si es necesario */}
+        
+        <Providers>
           {children}
-        </AuthProvider>
+        </Providers>
       </body>
     </html>
   );

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { AuthForm } from "../../../components/auth/AuthForm";
 import { RegisterFormData } from "../../../features/types";
-import { authService } from "../../../features/auth/services/AuthService";
+import { AuthService } from "@/features/auth/services/AuthService";
 import { motion } from "framer-motion";
 
 export default function RegisterPage() {
@@ -11,8 +11,8 @@ export default function RegisterPage() {
 
   const handleRegister = async (data: RegisterFormData) => {
     try {
-      await authService.register(data);
-      router.push("/auth/login"); // Redirige al login tras registro exitoso
+      await AuthService.register(data);
+      router.push("/auth/login");
     } catch (error: any) {
       console.error("Error al registrar:", error?.message || error);
     }
@@ -28,11 +28,10 @@ export default function RegisterPage() {
       >
         {/* Panel Informativo */}
         <div className="bg-gradient-to-br from-blue-600 to-violet-700 text-white p-10 flex flex-col justify-center">
-          <h2 className="text-3xl font-bold mb-4">¡Bienvenido a VendeFácil!</h2>
+          <h2 className="text-3xl font-bold mb-4">¡Bienvenido a TaytaService!</h2>
           <p className="text-sm mb-6">
-            Crea tu cuenta y comienza a vender o contratar servicios de manera
-            sencilla. Nuestra plataforma conecta a miles de usuarios en búsqueda
-            de productos y servicios como el tuyo.
+            Crea tu cuenta y comienza a vender o contratar servicios fácilmente. 
+            Conecta con miles de usuarios interesados en lo que ofreces.
           </p>
           <img
             src="/logo.png"
@@ -42,11 +41,20 @@ export default function RegisterPage() {
         </div>
 
         {/* Formulario de Registro */}
-        <div className="p-10">
+        <div className="p-10 flex flex-col justify-center">
           <h3 className="text-2xl font-semibold mb-6 text-center text-gray-800">
             Crear cuenta
           </h3>
           <AuthForm type="register" onSubmit={handleRegister} />
+          <p className="text-sm text-center mt-6 text-gray-600">
+            ¿Ya tienes una cuenta?{" "}
+            <button
+              onClick={() => router.push("/auth/login")}
+              className="text-indigo-600 hover:underline font-medium"
+            >
+              Inicia sesión
+            </button>
+          </p>
         </div>
       </motion.div>
     </main>
