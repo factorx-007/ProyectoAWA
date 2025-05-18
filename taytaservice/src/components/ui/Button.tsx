@@ -2,11 +2,17 @@ import React from 'react';
 import { ButtonHTMLAttributes } from 'react';
 
 // components/ui/Button.tsx
-export const Button = ({ className = '', children, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { className?: string }) => (
-  <button
-    className={`w-full p-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors ${className}`}
-    {...props}
-  >
-    {children}
-  </button>
-);
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: 'outline' | 'destructive';
+};
+
+export const Button = ({ children, variant, ...props }: ButtonProps) => {
+  const variantClass =
+    variant === 'outline'
+      ? 'border border-gray-500 text-gray-500'
+      : variant === 'destructive'
+      ? 'bg-red-500 text-white'
+      : '';
+
+  return <button className={`px-4 py-2 rounded ${variantClass}`} {...props}>{children}</button>;
+};

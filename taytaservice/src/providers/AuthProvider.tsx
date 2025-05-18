@@ -1,8 +1,15 @@
-'use client';
-import React from 'react';
-import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+"use client";
+import React, {
+  createContext,
+  useContext,
+  ReactNode,
+  useState,
+  useEffect,
+} from "react";
+import { useRouter } from "next/navigation";
 
+// providers/AuthProvider.tsx
+import api, { registerLogoutHandler } from "@/features/auth/api";
 interface User {
   id: string;
   name: string;
@@ -11,10 +18,11 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (token: string, userData: User) => void;
-  logout: () => void;
+  login: (token: string, userData: User) => Promise<void>;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
   loading: boolean;
+  initialized: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -22,77 +30,91 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
   const router = useRouter();
 
+  const validateUserData = (data: any): data is User => {
+    return data?.id && data?.name && data?.email;
+  };
+
+  const clearAuth = async () => {
+    localStorage.removeItem("auth-token");
+    localStorage.removeItem("user");
+    setUser(null);
+  };
+
+  const logout = async () => {
+    await clearAuth();
+    router.push("/auth/login");
+  };
+
+  // Registrar el manejador de logout en axios
   useEffect(() => {
-    const checkAuth = () => {
+    registerLogoutHandler(logout);
+  }, []);
+
+  useEffect(() => {
+    const initializeAuth = async () => {
       try {
-        if (typeof window !== 'undefined' && window.localStorage) {
-          const storedUser = localStorage.getItem('user');
-          if (storedUser) {
-            try {
-              const userData = JSON.parse(storedUser);
-              // Verificar si los datos del usuario son válidos
-              if (userData && userData.id && userData.name && userData.email) {
-                setUser(userData);
-              } else {
-                console.error("Datos de usuario inválidos.");
-                localStorage.removeItem('user'); // Limpiar datos corruptos
-              }
-            } catch (parseError) {
-              console.error('Error al parsear el usuario desde localStorage:', parseError);
-              localStorage.removeItem('user'); // Limpiar datos corruptos
-            }
+        const token = localStorage.getItem("auth-token");
+        const userData = localStorage.getItem("user");
+
+        if (token && userData) {
+          const parsedUser = JSON.parse(userData);
+          if (validateUserData(parsedUser)) {
+            setUser(parsedUser);
+          } else {
+            console.warn("Datos de usuario inválidos, limpiando autenticación");
+            await clearAuth();
           }
         }
       } catch (error) {
-        console.error('Error al verificar la autenticación:', error);
+        console.error("Error inicializando autenticación:", error);
+        await clearAuth();
       } finally {
         setLoading(false);
+        setInitialized(true);
       }
     };
 
-    checkAuth();
+    initializeAuth();
   }, []);
 
-  const login = (token: string, userData: User) => {
-    // Verificar que los datos sean válidos antes de almacenarlos
-    if (userData && userData.id && userData.name && userData.email) {
+  const login = async (token: string, userData: User) => {
+    try {
+      // 1. Guarda en almacenamiento local
       localStorage.setItem('auth-token', token);
       localStorage.setItem('user', JSON.stringify(userData));
+      
+      // 2. Actualiza el estado
       setUser(userData);
-      router.push('/');
-    } else {
-      console.error("Datos de usuario inválidos al intentar hacer login.");
+      
+      // 3. Espera un ciclo de renderizado
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      // 4. Redirige
+      router.push('/client');
+    } catch (error) {
+      console.error('Error en login:', error);
+      throw error;
     }
   };
-
-  const logout = () => {
-    localStorage.removeItem('auth-token');
-    localStorage.removeItem('user');
-    setUser(null);
-    router.push('/login');
-  };
-
-  const value = {
+  const value: AuthContextType = {
     user,
     login,
     logout,
     isAuthenticated: !!user,
-    loading
+    loading,
+    initialized,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth debe usarse dentro de AuthProvider");
   }
   return context;
 };

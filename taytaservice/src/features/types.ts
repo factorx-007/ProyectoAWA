@@ -19,6 +19,19 @@ export const registerSchema = z.object({
   url_img: z.string().url('URL inválida').optional()
 });
 
+
+export interface Producto {
+  id_categoria: number;
+  id_vendedor: number;
+  nombre: string;
+  precio: number;
+  es_servicio: boolean;
+  estado: string;
+  fecha_y_hora?: Date;
+  stock: number;
+}
+
+
 export type LoginFormData = z.infer<typeof loginSchema>;{
   email: string;
   contrasena: string;
