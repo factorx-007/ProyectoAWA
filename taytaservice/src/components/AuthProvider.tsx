@@ -44,7 +44,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // ... resto del código ...
 };
 
 function setUser(userData: User | null) {

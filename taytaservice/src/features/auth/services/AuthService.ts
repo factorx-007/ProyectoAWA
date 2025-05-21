@@ -22,18 +22,23 @@ export const AuthService = {
 
     // Decodifica el token para obtener el usuario
     const decoded = parseJwt(accessToken);
-    
+
     return {
-      token: accessToken, // Normalizamos a "token"
+      token: accessToken,
       refreshToken,
       user: {
-        id: decoded.id.toString(),
-        email: decoded.email,
-        name: decoded.email.split('@')[0] // O usa decoded.name si existe
+        id: decoded.id?.toString() ?? '',
+        email: decoded.email ?? '',
+        name: decoded.email?.split('@')[0] ?? ''
       }
     };
+  },
+
+register: async (userData: RegisterFormData) => {
+    const response = await axios.post('/api/usuarios', userData);
+    return response.data;
   }
-}
+};
 
 // Función para decodificar JWT
 function parseJwt(token: string) {

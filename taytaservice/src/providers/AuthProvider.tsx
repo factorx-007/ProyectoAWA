@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 // providers/AuthProvider.tsx
 import api, { registerLogoutHandler } from "@/features/auth/api";
 interface User {
+  token: any;
   id: string;
   name: string;
   email: string;

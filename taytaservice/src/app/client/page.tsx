@@ -1,35 +1,102 @@
 // app/client/page.tsx
+'use client';
+import { useEffect, useState } from 'react';
+import { ProductoService } from '@/features/productos/services/ProductoService';
 import { ProductGrid } from '@/components/client/products/ProductGrid';
 import { ServiceCarousel } from '@/components/client/service/ServiceCarousel';
 import { PromoBanner } from '@/components/client/products/PromoBanner';
+import axios from 'axios';
 
-const featuredProducts = [
-  {
-    id: 1,
-    name: 'Producto Destacado 1',
-    price: 99.99,
-    image: '/images/product1.jpg',
-    rating: 4.5,
-  },
-  // ... más productos
-];
+const getToken = (): string => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('auth-token') || '';
+  }
+  return '';
+};
 
-const featuredServices = [
-  {
-    id: 1,
-    name: 'Servicio Premium',
-    price: 149.99,
-    image: '/images/service1.jpg',
-    rating: 5,
-    description: 'Un servicio premium diseñado para satisfacer todas tus necesidades.',
-  },
-  // ... más servicios
-];
+const headers = () => ({
+  headers: { Authorization: `Bearer ${getToken()}` }
+});
 
 export default function ClientHomePage() {
+  const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
+  const [featuredServices, setFeaturedServices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [categorias, setCategorias] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [items, categoriasData] = await Promise.all([
+          ProductoService.getProductosCompletos(),
+          ProductoService.getCategorias()
+        ]);
+
+        setCategorias(categoriasData);
+
+        // Obtener nombres de vendedores
+        const vendedoresIds = [...new Set(items.map(item => item.id_vendedor))];
+        const vendedoresPromises = vendedoresIds.map(id => 
+          axios.get(`/api/usuarios/${id}`, headers()).then(res => res.data)
+        );
+        const vendedores = await Promise.all(vendedoresPromises);
+
+        // Separar y formatear productos
+        const productos = items
+          .filter(item => !item.es_servicio)
+          .slice(0, 6)
+          .map(producto => ({
+            id: producto.id_item,
+            name: producto.nombre,
+            price: producto.precio,
+            image: producto.image || '/images/default-product.jpg',
+            rating: producto.rating || 4,
+            stock: producto.stock || 0,
+            estado: producto.estado || 'A',
+            categoria: categoriasData.find(cat => cat.id_categoria === producto.id_categoria)?.nombre || 'Sin categoría',
+            vendedor: vendedores.find(v => v.id_usuario === producto.id_vendedor)?.nombre || 'Vendedor desconocido',
+            fecha: new Date(producto.fecha_y_hora).toLocaleDateString()
+          }));
+
+        // Separar y formatear servicios
+        const servicios = items
+          .filter(item => item.es_servicio)
+          .slice(0, 4)
+          .map(servicio => ({
+            id: servicio.id_item,
+            name: servicio.nombre,
+            price: servicio.precio,
+            image: servicio.image || '/images/default-service.jpg',
+            rating: servicio.rating || 5,
+            description: servicio.descripcion || 'Servicio profesional',
+            estado: servicio.estado || 'A',
+            categoria: categoriasData.find(cat => cat.id_categoria === servicio.id_categoria)?.nombre || 'Sin categoría',
+            vendedor: vendedores.find(v => v.id_usuario === servicio.id_vendedor)?.nombre || 'Vendedor desconocido',
+            fecha: new Date(servicio.fecha_y_hora).toLocaleDateString()
+          }));
+
+        setFeaturedProducts(productos);
+        setFeaturedServices(servicios);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-12">
-      {/* Banner promocional */}
       <PromoBanner 
         title="Ofertas Especiales"
         subtitle="Hasta 50% de descuento"
@@ -41,29 +108,55 @@ export default function ClientHomePage() {
       {/* Productos destacados */}
       <section>
         <h2 className="text-2xl font-bold mb-6">Productos Populares</h2>
-        <ProductGrid products={featuredProducts} />
-        <div className="mt-6 text-center">
-          <a 
-            href="/products" 
-            className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Ver todos los productos
-          </a>
-        </div>
+        {featuredProducts.length > 0 ? (
+          <>
+            <ProductGrid products={featuredProducts.map(p => ({
+              ...p,
+              categoria: p.categoria,
+              vendedor: p.vendedor,
+              estado: p.estado === 'A' ? 'Disponible' : 'Agotado'
+            }))} />
+            <div className="mt-6 text-center">
+              <a 
+                href="/products" 
+                className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Ver todos los productos
+              </a>
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            No hay productos destacados disponibles
+          </div>
+        )}
       </section>
 
       {/* Servicios destacados */}
       <section>
         <h2 className="text-2xl font-bold mb-6">Servicios Destacados</h2>
-        <ServiceCarousel services={featuredServices} />
-        <div className="mt-6 text-center">
-          <a 
-            href="/services" 
-            className="inline-block px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            Explorar servicios
-          </a>
-        </div>
+        {featuredServices.length > 0 ? (
+          <>
+            <ServiceCarousel services={featuredServices.map(s => ({
+              ...s,
+              estado: s.estado === 'A' ? 'Disponible' : 'No disponible',
+              categoria: s.categoria,
+              vendedor: s.vendedor
+            }))} />
+            <div className="mt-6 text-center">
+              <a 
+                href="/services" 
+                className="inline-block px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Explorar servicios
+              </a>
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            No hay servicios destacados disponibles
+          </div>
+        )}
       </section>
 
       {/* Testimonios */}
