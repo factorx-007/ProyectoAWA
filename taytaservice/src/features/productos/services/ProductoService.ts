@@ -1,47 +1,139 @@
+import { Producto } from '@/features/types';
 import axios from 'axios';
-import type { Producto } from '../../types';
+
+const getToken = (): string => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('auth-token');
+    if (!token) throw new Error('No se encontró token de autenticación');
+    return token;
+  }
+  throw new Error('localStorage no disponible en servidor');
+};
+
+const headers = () => ({
+  headers: { Authorization: `Bearer ${getToken()}` }
+});
 
 export const ProductoService = {
-  async createProducto(data: Producto) {
+  async getProductoCompleto(id: number): Promise<any> {
     try {
-      const token = getToken();
-      const config = {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+      // Obtener el ítem primero
+      const itemResponse = await axios.get(`/api/items/${id}`, headers());
+      const item = itemResponse.data as {
+        id_categoria: number | string;
+        precio: number | string;
+        es_servicio: boolean;
+        [key: string]: any;
       };
+      
+      // Intentar obtener el producto solo si no es servicio
+      let productoData: { stock: number; [key: string]: any } = { stock: 0 };
+      if (!item.es_servicio) {
+        const productoResponse = await axios.get(`/api/productos/${id}`, headers());
+        productoData = productoResponse.data as { stock: number; [key: string]: any };
+      }
 
-      // 1. Crear el Item primero
-      const itemResponse = await axios.post<{ id_item: number }>('/api/items', {
+      return {
+        ...item,
+        ...productoData,
+        id_producto: id,
+        id_categoria: item.id_categoria.toString(),
+        precio: item.precio.toString()
+      };
+    } catch (error) {
+      console.error('Error obteniendo producto completo:', error);
+      throw error;
+    }
+  },
+
+  async getProductosCompletos(): Promise<any[]> {
+    try {
+      const [itemsResponse, productosResponse] = await Promise.all([
+        axios.get<any[]>('/api/items', headers()),
+        axios.get<any[]>('/api/productos', headers())
+      ]);
+
+      return itemsResponse.data.map((item: any) => ({
+        ...item,
+        ...productosResponse.data.find((p: any) => p.id_producto === item.id_item),
+        id_producto: item.id_item
+      }));
+    } catch (error) {
+      console.error('Error obteniendo productos completos:', error);
+      throw error;
+    }
+  },
+
+  async createProducto(data: Omit<Producto, 'id_producto'>) {
+    try {
+      const itemResponse = await axios.post('/api/items', {
         id_categoria: data.id_categoria,
         id_vendedor: data.id_vendedor,
         nombre: data.nombre,
         precio: data.precio,
         es_servicio: data.es_servicio,
-        estado: data.estado,
-        fecha_y_hora: new Date().toISOString()
-      }, config);
+        estado: data.estado
+      }, headers());
 
-      // 2. Crear el Producto asociado
-      const productoResponse = await axios.post('/api/productos', {
-        id_producto: itemResponse.data.id_item, // Asociación correcta
-        stock: data.stock,
-        // Otros campos necesarios
-      }, config);
+      // Assert the type of itemResponse.data
+      const itemData = itemResponse.data as { id_item: number; [key: string]: any };
+
+      if (!data.es_servicio) {
+        await axios.post('/api/productos', {
+          id_producto: itemData.id_item,
+          stock: data.stock
+        }, headers());
+      }
 
       return {
-        ...(typeof productoResponse.data === 'object' && productoResponse.data !== null ? productoResponse.data : {}),
-        id_item: itemResponse.data.id_item
+        ...itemData,
+        stock: data.stock,
+        id_producto: itemData.id_item
       };
-      
-    } catch (error: any) {
-      console.error('Error detallado:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.message || 'Error al crear el producto');
+    } catch (error) {
+      console.error('Error creando producto:', error);
+      throw error;
+    }
+  },
+
+  async deleteProducto(id: number) {
+    try {
+      await axios.delete(`/api/productos/${id}`, headers());
+      await axios.delete(`/api/items/${id}`, headers());
+      return true;
+    } catch (error) {
+      console.error('Error eliminando producto:', error);
+      throw error;
+    }
+  },
+
+  async updateItem(id: number, data: any) {
+    try {
+      const response = await axios.put(`/api/items/${id}`, data, headers());
+      return response.data;
+    } catch (error) {
+      console.error('Error actualizando ítem:', error);
+      throw error;
+    }
+  },
+
+  async updateProducto(id: number, data: any) {
+    try {
+      const response = await axios.put(`/api/productos/${id}`, data, headers());
+      return response.data;
+    } catch (error) {
+      console.error('Error actualizando producto:', error);
+      throw error;
+    }
+  },
+
+  async getCategorias() {
+    try {
+      const response = await axios.get('/api/categorias', headers());
+      return response.data;
+    } catch (error) {
+      console.error('Error obteniendo categorías:', error);
+      throw error;
     }
   }
 };
-
-function getToken() {
-  throw new Error('Function not implemented.');
-}

@@ -9,12 +9,17 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^5.0.1",
     "@mantine/core": "^7.17.7",
     "@mantine/hooks": "^7.17.7",
+    "@radix-ui/react-select": "^2.2.4",
     "@tremor/react": "^3.18.7",
     "axios": "^1.9.0",
+    "date-fns": "^3.6.0",
     "framer-motion": "^12.9.4",
+    "jwt-decode": "^4.0.0",
+    "lucide-react": "^0.511.0",
     "next": "15.3.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

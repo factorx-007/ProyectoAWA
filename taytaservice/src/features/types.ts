@@ -53,6 +53,31 @@ export type User = {
   role?: 'user' | 'admin'; // Opcional: para manejar roles
 };
 
+export interface Item {
+  id_item: number;
+  id_categoria: number;
+  id_vendedor: number;
+  nombre: string;
+  precio: number;
+  es_servicio: boolean;
+  estado: string;
+  fecha_y_hora: string;
+  Categoria?: {
+    id_categoria: number;
+    nombre: string;
+  };
+}
+
+export interface Producto {
+  id_producto: number;
+  stock: number;
+  Item?: Item; // Relación con Item
+}
+
+export type ProductoCompleto = Producto & {
+  Item: Item; // Aseguramos que siempre venga el Item
+};
+
 export type AuthContextType = {
   user: User | null;
   login: (token: string, userData: User) => void;
