@@ -18,6 +18,12 @@ const MensajeSchema = new Schema({
   timestamp: {
     type: Date,
     default: Date.now
+  },
+  estado: { 
+    type: String, 
+    required: true, 
+    enum: ['E', 'R', 'L'], //Enviado, Recibido, Leído
+    default: 'E'
   }
 });
 

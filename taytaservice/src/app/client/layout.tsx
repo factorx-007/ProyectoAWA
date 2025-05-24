@@ -14,7 +14,7 @@ export default function ClientLayout({
       <AuthGuard>
         <div className="flex flex-col min-h-screen">
           <ClientHeader />
-          <main className="flex-grow">
+          <main className="flex-grow bg-gray-80">
             {children}
           </main>
           <ClientFooter />

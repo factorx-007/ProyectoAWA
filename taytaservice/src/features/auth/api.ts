@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useRouter } from 'next/navigation';
 
 const api = axios.create({
-  baseURL: '/api'
+  baseURL: 'http://localhost:4000/api'
 });
 
 // Variable para almacenar la función de logout

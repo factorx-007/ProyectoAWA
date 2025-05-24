@@ -1,74 +1,106 @@
+// backend/index.js
 require('dotenv').config();
-const mongoose = require('mongoose');
-
 const express = require('express');
+const http = require('http');
 const path = require('path');
-const app = express();
 const cors = require('cors');
+const mongoose = require('mongoose');
+const { Server } = require('socket.io');
 
-app.use(cors({
-  origin: 'http://localhost:3000',
-  methods: '*', 
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+const Chat = require('./models/mongoModels/chat');
+const Mensaje = require('./models/mongoModels/mensaje');
 
+// Conexiones a bases
 mongoose.connect(process.env.URI)
-.then(() => {
-  console.log('🟢 Conectado a MongoDB, base de datos: ' + mongoose.connection.db.databaseName);
-  })
-.catch(err => console.error('🔴 Error al conectar a MongoDB', err));
+  .then(() => console.log('🟢 Conectado a MongoDB'))
+  .catch(err => console.error('🔴 Error al conectar a MongoDB', err));
 
-const usuarioRoutes = require('./routes/usuarioRoutes');
-const categoriaRoutes = require('./routes/categoriaRoutes');
-const calificacionRoutes = require('./routes/calificacionRoutes');
-const compraRoutes = require('./routes/compraRoutes');
-const denunciaRoutes = require('./routes/denunciaRoutes');
-const interaccionRoutes = require('./routes/interaccionRoutes');
-const itemRoutes = require('./routes/itemRoutes');
-const motivoDenunciaRoutes = require('./routes/motivoDenunciaRoutes');
-const productoRoutes = require('./routes/productoRoutes');
-const imgsRoutesUsers = express.static(path.join(__dirname, 'uploads', 'user_imgs'));
-const imgsRoutesItems = express.static(path.join(__dirname, 'uploads', 'item_imgs'));
-const uploadRoutes = require('./routes/uploadRoutes');//uploadRoutes tiene el middleware
-const authRoutes = require('./routes/authRoutes');
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: 'http://localhost:3000', methods: ['GET','POST'], allowedHeaders: ['Content-Type','Authorization'] }
+});
 
-const chatRoutes =  require('./routes/chatRoutes');
-const mensajeRoutes = require('./routes/mensajeRoutes');
-
+// Middlewares
+app.use(cors({ origin: 'http://localhost:3000', methods: '*', allowedHeaders: ['Content-Type','Authorization'] }));
 app.use(express.json());
 
+app.use('/api/uploads/user_imgs', require('./auth/authMiddleware'), express.static(path.join(__dirname, 'uploads','user_imgs')));
+app.use('/api/uploads/item_imgs', require('./auth/authMiddleware'), express.static(path.join(__dirname, 'uploads','item_imgs')));
+
+// Rutas REST
+app.use('/api/auth', require('./routes/authRoutes'));
+//app.use('/api/usuarios', require('./auth/authMiddleware'), require('./routes/usuarioRoutes'));
 const authMiddleware = require('./auth/authMiddleware');
-
-app.use('/api/auth', authRoutes);
-
-//app.use('/api/usuarios', authMiddleware, usuarioRoutes); //quitar la protección de middeware si se hace un post
-
+const usuarioRoutes = require('./routes/usuarioRoutes');
 app.use('/api/usuarios', (req, res, next) => {
   if (req.method === 'POST' && req.path === '/') {
     return next();
   }
   authMiddleware(req, res, next);
 }, usuarioRoutes);
+app.use('/api/categorias', require('./auth/authMiddleware'), require('./routes/categoriaRoutes'));
+app.use('/api/motivos-denuncia', require('./auth/authMiddleware'), require('./routes/motivoDenunciaRoutes'));
+app.use('/api/items', require('./auth/authMiddleware'), require('./routes/itemRoutes'));
+app.use('/api/productos', require('./auth/authMiddleware'), require('./routes/productoRoutes'));
+app.use('/api/interacciones', require('./auth/authMiddleware'), require('./routes/interaccionRoutes'));
+app.use('/api/calificaciones', require('./auth/authMiddleware'), require('./routes/calificacionRoutes'));
+app.use('/api/compras', require('./auth/authMiddleware'), require('./routes/compraRoutes'));
+app.use('/api/denuncias', require('./auth/authMiddleware'), require('./routes/denunciaRoutes'));
+app.use('/api/upload-img', require('./routes/uploadRoutes')); // uploadRoutes incluye su propio middleware
+app.use('/api/chats', require('./auth/authMiddleware'), require('./routes/chatRoutes'));
+app.use('/api/mensajes', require('./auth/authMiddleware'), require('./routes/mensajeRoutes'));
 
-app.use('/api/categorias', authMiddleware, categoriaRoutes);
-app.use('/api/calificaciones', authMiddleware, calificacionRoutes);
-app.use('/api/compras', authMiddleware, compraRoutes);
-app.use('/api/denuncias', authMiddleware, denunciaRoutes);
-app.use('/api/interacciones', authMiddleware, interaccionRoutes);
-app.use('/api/items', authMiddleware, itemRoutes);
-app.use('/api/motivos-denuncia', authMiddleware, motivoDenunciaRoutes);
-app.use('/api/productos', authMiddleware, productoRoutes);
+// Socket.IO
+const usuariosConectados = {}; // map userId -> socketId
 
-app.use('/api/uploads/user_imgs', authMiddleware, imgsRoutesUsers);//obtener imágenes
-app.use('/api/uploads/item_imgs', authMiddleware, imgsRoutesItems);
-app.use('/api/upload-img', uploadRoutes);//añadir middleware
+io.on('connection', socket => {
+  console.log('🔌 Cliente conectado', socket.id);
 
-//urls de mongoDB
-app.use('/api/chats', authMiddleware, chatRoutes);
-app.use('/api/mensajes', authMiddleware, mensajeRoutes);
+  socket.on('registrarUsuario', userId => {
+    usuariosConectados[userId] = socket.id;
+  });
 
-const PORT = 4000;
+  socket.on('mensaje', async data => {
+    console.log('📨 Evento mensaje recibido:', data);
+    const { idChat, emisor, contenido, _idTemp } = data;
+    try {
+      // Buscamos chat por su _id
+      const chat = await Chat.findById(idChat);
+      if (!chat) {
+        console.error('Chat no encontrado para idChat:', idChat);
+        return;
+      }
 
-app.listen(PORT, () => {
-  console.log('Servidor iniciado en puerto ' + PORT);
+      // Almacenamos el mensaje
+      const mensaje = await Mensaje.create({
+        idChat: chat._id,
+        idEmisor: emisor,
+        contenido,
+        timestamp: new Date(),
+      });
+
+      // Preparamos el payload a enviar
+      const mensajeFrontend = {
+        _id: mensaje._id,
+        _idTemp,
+        idChat: mensaje.idChat,
+        idEmisor: mensaje.idEmisor,
+        contenido: mensaje.contenido,
+        timestamp: mensaje.timestamp,
+      };
+
+      // Emitimos a todos los participantes del chat
+      chat.idParticipantes.forEach(userId => {
+        const sockId = usuariosConectados[userId];
+        if (sockId) io.to(sockId).emit('mensaje', mensajeFrontend);
+      });
+    } catch (err) {
+      console.error('Error manejando mensaje por socket:', err);
+    }
+  });
 });
+
+// Arrancar servidor HTTP con Socket.IO
+const PORT = process.env.PORT || 4000;
+server.listen(PORT, () => console.log(`🚀 Servidor escuchando en puerto ${PORT}`));
