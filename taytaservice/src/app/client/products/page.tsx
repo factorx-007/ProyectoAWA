@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react';
 import { ProductoService } from '@/features/productos/services/ProductoService';
 import ProductoCard from '@/components/client/products/ProductoCard';
+import api from '@/features/auth/api';
+import { BasicUser } from '@/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -11,6 +13,7 @@ import { ProductFilter } from '@/components/client/products/ProductFilter';
 export default function ProductsPage() {
   const [productos, setProductos] = useState<any[]>([]);
   const [categorias, setCategorias] = useState<any[]>([]);
+  const [usuarios, setUsuarios] = useState<BasicUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -20,22 +23,26 @@ export default function ProductsPage() {
   useEffect(() => {
     const cargarDatos = async () => {
       try {
-        const [productosData, categoriasDataRaw] = await Promise.all([
+        const [productosData, categoriasDataRaw, usuariosData] = await Promise.all([
           ProductoService.getProductosCompletos(),
-          ProductoService.getCategorias()
+          ProductoService.getCategorias(),
+          api.get<BasicUser[]>('/usuarios').then(res => res.data),
         ]);
         const categoriasData = categoriasDataRaw as any[];
-        
+
         // Filtrar solo productos (es_servicio = false) y luego formatear
         const productosFormateados = productosData
           .filter((producto: any) => !producto.es_servicio)
           .map((producto: any) => ({
             ...producto,
-            categoryName: categoriasData.find((cat: any) => cat.id_categoria === producto.id_categoria)?.nombre || 'Sin categoría'
+            categoria: categoriasData.find((cat: any) => cat.id_categoria === producto.id_categoria)?.nombre || 'Sin categoría',
+            stock: producto.stock ?? 0,
+            vendedor: usuariosData.find((u: BasicUser) => u.id_usuario === producto.id_vendedor) || null,
           }));
 
         setProductos(productosFormateados);
         setCategorias(categoriasData);
+        setUsuarios(usuariosData);
       } catch (error) {
         console.error('Error cargando datos:', error);
       } finally {
@@ -131,12 +138,7 @@ export default function ProductsPage() {
               {sortedProducts.map(producto => (
                 <ProductoCard 
                   key={producto.id_producto}
-                  producto={{
-                    ...producto,
-                    categoria: producto.categoryName,
-                    stock: producto.stock || 0
-                  }}
-                  onDelete={handleDelete}
+                  producto={producto}
                 />
               ))}
             </div>

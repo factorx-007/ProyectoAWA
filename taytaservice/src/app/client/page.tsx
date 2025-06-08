@@ -6,6 +6,7 @@ import { ProductGrid } from '@/components/client/products/ProductGrid';
 import { ServiceCarousel } from '@/components/client/service/ServiceCarousel';
 import { PromoBanner } from '@/components/client/products/PromoBanner';
 import axios from 'axios';
+import { BasicUser } from '@/types';
 
 const getToken = (): string => {
   if (typeof window !== 'undefined') {
@@ -34,12 +35,23 @@ export default function ClientHomePage() {
 
         setCategorias(categoriasData as any[]);
 
-        // Obtener nombres de vendedores
+        // Obtener información de vendedores
         const vendedoresIds = [...new Set(items.map(item => item.id_vendedor))];
         const vendedoresPromises = vendedoresIds.map(id => 
-          axios.get(`/api/usuarios/${id}`, headers()).then(res => res.data)
+          axios.get<BasicUser>(`/api/usuarios/${id}`, headers()).then(res => res.data)
         );
         const vendedores = await Promise.all(vendedoresPromises);
+
+        // Función para obtener información del vendedor
+        const getVendedorInfo = (idVendedor: number) => {
+          const vendedor = vendedores.find(v => v.id_usuario === idVendedor);
+          return vendedor ? {
+            id_usuario: vendedor.id_usuario,
+            nombres: vendedor.nombres,
+            apellidos: vendedor.apellidos,
+            url_img: vendedor.url_img
+          } : null;
+        };
 
         // Separar y formatear productos
         const productos = items
@@ -55,8 +67,7 @@ export default function ClientHomePage() {
             estado: producto.estado || 'A',
             categoria: (categoriasData as { id_categoria: number; nombre: string }[])
               .find(cat => cat.id_categoria === producto.id_categoria)?.nombre || 'Sin categoría',
-            vendedor: (vendedores as { id_usuario: number; nombre: string }[])
-              .find(v => v.id_usuario === producto.id_vendedor)?.nombre || 'Vendedor desconocido',
+            vendedor: getVendedorInfo(producto.id_vendedor),
             fecha: new Date(producto.fecha_y_hora).toLocaleDateString()
           }));
 
@@ -74,8 +85,7 @@ export default function ClientHomePage() {
             estado: servicio.estado || 'A',
             categoria: (categoriasData as { id_categoria: number; nombre: string }[])
               .find(cat => cat.id_categoria === servicio.id_categoria)?.nombre || 'Sin categoría',
-            vendedor: (vendedores as { id_usuario: number; nombre: string }[])
-              .find(v => v.id_usuario === servicio.id_vendedor)?.nombre || 'Vendedor desconocido',
+            vendedor: getVendedorInfo(servicio.id_vendedor),
             fecha: new Date(servicio.fecha_y_hora).toLocaleDateString()
           }));
 

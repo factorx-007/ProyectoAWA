@@ -6,6 +6,7 @@ import { ServiceCard } from '@/components/client/service/ServiceCard';
 import { ServiceCategoryFilter } from '@/components/client/service/ServiceCategoryFilter';
 import { Search } from 'lucide-react';
 import axios from 'axios';
+import { BasicUser } from '@/types';
 
 const getToken = (): string => {
   if (typeof window !== 'undefined') {
@@ -41,18 +42,26 @@ export default function ServicesPage() {
 
         // Obtener información de vendedores
         const vendedoresPromises = vendedoresIds.map(id =>
-          axios.get(`/api/usuarios/${id}`, headers()).then(res => res.data)
+          axios.get<BasicUser>(`/api/usuarios/${id}`, headers()).then(res => res.data)
         );
         const vendedores = await Promise.all(vendedoresPromises);
         
         // Filtrar solo servicios y formatear con información completa
         const serviciosFormateados = serviciosData
           .filter((servicio: any) => servicio.es_servicio)
-          .map((servicio: any) => ({
-            ...servicio,
-            categoryName: categoriasData.find((cat: any) => cat.id_categoria === servicio.id_categoria)?.nombre || 'Sin categoría',
-            vendedor: vendedores.find((v: any) => v.id_usuario === servicio.id_vendedor)?.nombres || 'Vendedor desconocido'
-          }));
+          .map((servicio: any) => {
+            const vendedor = vendedores.find((v: BasicUser) => v.id_usuario === servicio.id_vendedor);
+            return {
+              ...servicio,
+              categoryName: categoriasData.find((cat: any) => cat.id_categoria === servicio.id_categoria)?.nombre || 'Sin categoría',
+              vendedor: vendedor ? {
+                id_usuario: vendedor.id_usuario,
+                nombres: vendedor.nombres,
+                apellidos: vendedor.apellidos,
+                url_img: vendedor.url_img
+              } : null
+            };
+          });
 
         setServices(serviciosFormateados);
         setError(null);

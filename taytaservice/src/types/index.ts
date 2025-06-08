@@ -1,4 +1,8 @@
 // User Types
+
+/**
+ * Tipo completo de usuario con todos los campos
+ */
 export type User = {
   id_usuario: number;
   nombres: string;
@@ -12,6 +16,9 @@ export type User = {
   fecha_actualizacion?: string;
 };
 
+/**
+ * Datos para formulario de usuario
+ */
 export type UserFormData = {
   nombres: string;
   apellidos: string;
@@ -22,6 +29,16 @@ export type UserFormData = {
   url_img: string;
   contrasena?: string;
   confirmarContrasena?: string;
+};
+
+/**
+ * Versión ligera del tipo User para componentes que solo necesitan información básica
+ */
+export type BasicUser = {
+  id_usuario: number;
+  nombres: string;
+  apellidos: string;
+  url_img?: string;
 };
 
 // Report Types

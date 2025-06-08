@@ -2,19 +2,38 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Package, Tag, User, Star, Trash2, Edit } from 'lucide-react';
+
+interface Vendedor {
+  id_usuario?: number;
+  nombres?: string;
+  apellidos?: string;
+  email?: string;
+  telefono?: string;
+  url_img?: string;
+}
+
+interface Categoria {
+  id_categoria?: number;
+  nombre?: string;
+  descripcion?: string;
+}
+
 interface ProductoCardProps {
   producto?: {
     id_producto: number;
     nombre: string;
+    descripcion?: string;
     precio: number;
-    estado?: string; // Hacer opcional
-    stock?: number; // Hacer opcional
+    estado?: 'A' | 'I' | string;
+    stock?: number;
     image?: string;
-    categoria?: string;
+    categoria?: Categoria | string | null;
     imagen_url?: string;
     rating?: number;
     id_vendedor?: number;
-    vendedor?: string;
+    vendedor?: Vendedor | string | null;
+    fecha_creacion?: string;
+    fecha_actualizacion?: string;
   };
   onDelete?: (id: number) => void;
 }
@@ -27,8 +46,31 @@ const ProductoCard: React.FC<ProductoCardProps> = ({ producto, onDelete }) => {
     );
   }
 
+  // Obtener nombre de categoría
+  const getCategoriaNombre = () => {
+    if (!producto.categoria) return 'Sin categoría';
+    if (typeof producto.categoria === 'string') return producto.categoria;
+    return producto.categoria.nombre || 'Sin categoría';
+  };
+
+  // Obtener nombre del vendedor
+  const getVendedorNombre = () => {
+    if (!producto.vendedor) return 'Vendedor no disponible';
+    if (typeof producto.vendedor === 'string') return producto.vendedor;
+    return `${producto.vendedor.nombres || ''} ${producto.vendedor.apellidos || ''}`.trim() || 
+           `Vendedor #${producto.id_vendedor || 'N/A'}`;
+  };
+
+  // Obtener imagen del vendedor
+  const getVendedorImagen = () => {
+    if (!producto.vendedor || typeof producto.vendedor === 'string') return '/avatar.png';
+    return producto.vendedor.url_img || '/avatar.png';
+  };
+
   const estadoTexto = producto.estado === 'A' ? 'Disponible' : 'Agotado';
-  const stockStatus = producto.stock && producto.stock > 0 ? 'En stock' : 'Sin stock';
+  const stockStatus = producto.stock !== undefined && producto.stock >= 0 
+    ? `${producto.stock} ${producto.stock === 1 ? 'unidad' : 'unidades'} disponible${producto.stock !== 1 ? 's' : ''}` 
+    : 'Stock no disponible';
 
   return (
     <div className="group relative bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col">
@@ -72,17 +114,31 @@ const ProductoCard: React.FC<ProductoCardProps> = ({ producto, onDelete }) => {
         <div className="grid grid-cols-2 gap-2 text-sm mb-4">
           <div className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
             <Tag className="w-5 h-5 text-gray-400 mr-1" />
-            <span className="truncate">{producto.categoria}</span>
+            <span className="truncate" title={getCategoriaNombre()}>
+              {getCategoriaNombre()}
+            </span>
           </div>
-          <div className="flex items-center gap-1">
-            <Package className="w-5 h-5 text-gray-400 mr-1" />
-            <span className={producto.stock && producto.stock > 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}>
+          <div className="flex items-center gap-1" title={`${producto.stock || 0} unidades en stock`}>
+            <Package className="w-5 h-5 text-gray-400 mr-1 flex-shrink-0" />
+            <span className={`text-sm ${producto.stock && producto.stock > 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
               {stockStatus}
             </span>
           </div>
           <div className="flex items-center gap-1 col-span-2">
-            <User className="w-5 h-5 text-gray-400 mr-1" />
-            <span className="truncate">{producto.vendedor || `Vendedor #${producto.id_vendedor}`}</span>
+            <div className="flex items-center gap-2">
+              <img 
+                src={getVendedorImagen()} 
+                alt={getVendedorNombre()}
+                className="w-5 h-5 rounded-full object-cover border border-gray-200"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/avatar.png';
+                }}
+              />
+              <span className="truncate" title={getVendedorNombre()}>
+                {getVendedorNombre()}
+              </span>
+            </div>
           </div>
         </div>
         <div className="mt-auto flex gap-2">

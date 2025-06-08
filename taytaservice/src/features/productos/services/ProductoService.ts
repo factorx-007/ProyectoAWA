@@ -48,16 +48,23 @@ export const ProductoService = {
 
   async getProductosCompletos(): Promise<any[]> {
     try {
-      const [itemsResponse, productosResponse] = await Promise.all([
+      const [itemsResponse, productosResponse, usuariosResponse] = await Promise.all([
         axios.get<any[]>('/api/items', headers()),
-        axios.get<any[]>('/api/productos', headers())
+        axios.get<any[]>('/api/productos', headers()),
+        axios.get<any[]>('/api/usuarios', headers())
       ]);
 
-      return itemsResponse.data.map((item: any) => ({
-        ...item,
-        ...productosResponse.data.find((p: any) => p.id_producto === item.id_item),
-        id_producto: item.id_item
-      }));
+      return itemsResponse.data.map((item: any) => {
+        const producto = productosResponse.data.find((p: any) => p.id_producto === item.id_item) || {};
+        const vendedor = usuariosResponse.data.find((u: any) => u.id_usuario === item.id_vendedor);
+        
+        return {
+          ...item,
+          ...producto,
+          id_producto: item.id_item,
+          vendedor: vendedor || null
+        };
+      });
     } catch (error) {
       console.error('Error obteniendo productos completos:', error);
       throw error;
