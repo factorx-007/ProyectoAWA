@@ -48,7 +48,7 @@ export default function AgregarProducto() {
     }
   };
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (formData: any) => {
     setIsSubmitting(true);
     
     try {
@@ -57,47 +57,64 @@ export default function AgregarProducto() {
         throw new Error('Usuario no autenticado');
       }
 
-      const payload = {
-        ...data,
-        precio: parseFloat(data.precio),
-        id_categoria: parseInt(data.id_categoria),
-        id_vendedor: user.id // Usamos el ID del contexto de autenticación
+      // Preparar datos comunes para items
+      const itemData = {
+        nombre: formData.nombre.trim(),
+        descripcion: formData.descripcion || 'Sin descripción',
+        precio: parseFloat(formData.precio),
+        id_categoria: parseInt(formData.id_categoria),
+        id_vendedor: user.id,
+        es_servicio: formData.es_servicio || false,
+        estado: 'A', // A: Activo
+        fecha_y_hora: new Date().toISOString()
       };
 
+      // 1. Crear el ítem (producto o servicio)
       const itemResponse = await fetch('/api/items', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(itemData)
       });
 
-      if (!itemResponse.ok) throw new Error(await itemResponse.text());
+      if (!itemResponse.ok) {
+        const errorData = await itemResponse.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Error al crear el ítem');
+      }
 
       const item = await itemResponse.json();
 
-      if (!data.es_servicio) {
+      // 2. Si es producto, crear el registro en la tabla productos
+      if (!formData.es_servicio) {
+        const stock = parseInt(formData.stock) || 0;
+        const productoData = {
+          id_producto: item.id_item,
+          stock: stock >= 0 ? stock : 0
+        };
+
         const productoResponse = await fetch('/api/productos', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({
-            id_producto: item.id_item,
-            stock: parseInt(data.stock)
-          })
+          body: JSON.stringify(productoData)
         });
 
-        if (!productoResponse.ok) throw new Error(await productoResponse.text());
+        if (!productoResponse.ok) {
+          const errorData = await productoResponse.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Error al registrar el producto');
+        }
       }
 
-      toast.success(data.es_servicio ? '¡Servicio creado!' : '¡Producto creado!');
+      // 3. Éxito - redirigir
+      toast.success(formData.es_servicio ? '¡Servicio creado exitosamente!' : '¡Producto creado exitosamente!');
       router.push('/client/VenderProductos');
     } catch (error) {
-      console.error("Error:", error);
-      toast.error(error instanceof Error ? error.message : 'Error desconocido');
+      console.error('Error en el formulario:', error);
+      toast.error(error instanceof Error ? error.message : 'Error al procesar la solicitud');
     } finally {
       setIsSubmitting(false);
     }

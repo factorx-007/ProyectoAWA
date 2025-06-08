@@ -32,7 +32,7 @@ export default function ClientHomePage() {
           ProductoService.getCategorias()
         ]);
 
-        setCategorias(categoriasData);
+        setCategorias(categoriasData as any[]);
 
         // Obtener nombres de vendedores
         const vendedoresIds = [...new Set(items.map(item => item.id_vendedor))];
@@ -53,8 +53,10 @@ export default function ClientHomePage() {
             rating: producto.rating || 4,
             stock: producto.stock || 0,
             estado: producto.estado || 'A',
-            categoria: categoriasData.find(cat => cat.id_categoria === producto.id_categoria)?.nombre || 'Sin categoría',
-            vendedor: vendedores.find(v => v.id_usuario === producto.id_vendedor)?.nombre || 'Vendedor desconocido',
+            categoria: (categoriasData as { id_categoria: number; nombre: string }[])
+              .find(cat => cat.id_categoria === producto.id_categoria)?.nombre || 'Sin categoría',
+            vendedor: (vendedores as { id_usuario: number; nombre: string }[])
+              .find(v => v.id_usuario === producto.id_vendedor)?.nombre || 'Vendedor desconocido',
             fecha: new Date(producto.fecha_y_hora).toLocaleDateString()
           }));
 
@@ -70,8 +72,10 @@ export default function ClientHomePage() {
             rating: servicio.rating || 5,
             description: servicio.descripcion || 'Servicio profesional',
             estado: servicio.estado || 'A',
-            categoria: categoriasData.find(cat => cat.id_categoria === servicio.id_categoria)?.nombre || 'Sin categoría',
-            vendedor: vendedores.find(v => v.id_usuario === servicio.id_vendedor)?.nombre || 'Vendedor desconocido',
+            categoria: (categoriasData as { id_categoria: number; nombre: string }[])
+              .find(cat => cat.id_categoria === servicio.id_categoria)?.nombre || 'Sin categoría',
+            vendedor: (vendedores as { id_usuario: number; nombre: string }[])
+              .find(v => v.id_usuario === servicio.id_vendedor)?.nombre || 'Vendedor desconocido',
             fecha: new Date(servicio.fecha_y_hora).toLocaleDateString()
           }));
 

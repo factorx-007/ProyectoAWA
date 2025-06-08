@@ -16,6 +16,10 @@ interface ServiceCardProps {
     id_vendedor: number;
     fecha_y_hora: string;
     image?: string;
+    categoria?: string;
+    vendedor?: string;
+    description?: string;
+    rating?: number;
   };
   onDelete: (id: number) => void;
 }
@@ -32,143 +36,99 @@ const headers = () => ({
 });
 
 export const ServiceCard = ({ service, onDelete }: ServiceCardProps) => {
-  const [categoryName, setCategoryName] = useState('');
-  const [vendorName, setVendorName] = useState('');
-  const [loading, setLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-
   const estadoTexto = service.estado === 'A' ? 'Activo' : 'Inactivo';
 
-  useEffect(() => {
-    const fetchCategory = async () => {
-      try {
-        const categorias = await ProductoService.getCategorias() as Array<{ id_categoria: number; nombre: string }>;
-        const categoria = categorias.find(cat => cat.id_categoria === service.id_categoria);
-        setCategoryName(categoria?.nombre || 'Categoría no encontrada');
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-        setCategoryName('Error al cargar categoría');
-      }
-    };
-
-    const fetchVendor = async () => {
-      if (!service.id_vendedor) {
-        setVendorName('Vendedor no disponible');
-        return;
-      }
-      
-      try {
-        const response = await axios.get(`/api/usuarios/${service.id_vendedor}`, headers());
-        const data = response.data as { nombre?: string };
-        setVendorName(data.nombre || 'Vendedor desconocido');
-      } catch (error) {
-        console.error('Error fetching vendor:', error);
-        setVendorName('Error cargando vendedor');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCategory();
-    fetchVendor();
-  }, [service.id_categoria, service.id_vendedor]);
-
   return (
-    <div className="border border-gray-200 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 bg-white">
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* Imagen destacada */}
-        <div className="w-full md:w-1/4 lg:w-1/5 relative aspect-square rounded-xl overflow-hidden">
-          <img
-            src={imageError || !service.image ? '/default-service.jpg' : service.image}
-            alt={service.nombre}
-            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-            onError={() => setImageError(true)}
-          />
-          <div className="absolute top-2 left-2 bg-white/90 px-2 py-1 rounded-md text-xs font-semibold">
-            {service.es_servicio ? 'SERVICIO' : 'PRODUCTO'}
-          </div>
-          <div className={`absolute top-2 right-2 px-2 py-1 rounded-md text-xs font-semibold text-white ${
-            service.estado === 'A' ? 'bg-green-500' : 'bg-red-500'
-          }`}>
-            {estadoTexto}
-          </div>
-        </div>
-        
-        {/* Contenido principal */}
-        <div className="flex-1 flex flex-col">
-          <div className="flex justify-between items-start">
-            <div>
-              <h3 className="font-bold text-xl md:text-2xl text-gray-800 mb-1">{service.nombre}</h3>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-sm text-gray-500">Categoría:</span>
-                <span className="text-sm font-medium bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                  {loading ? '...' : categoryName}
-                </span>
-              </div>
-            </div>
-            
-            <div className="text-right">
-              <div className="text-2xl font-bold text-blue-600">${service.precio.toFixed(2)}</div>
-              <div className="text-xs text-gray-500">Fecha: {new Date(service.fecha_y_hora).toLocaleDateString()}</div>
-            </div>
-          </div>
-          
-          {/* Detalles expandibles */}
-          {showDetails && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg animate-fadeIn">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium text-gray-600">Vendedor:</span> 
-                  <span className="ml-2 font-medium">
-                    {loading ? 'Cargando...' : vendorName}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-600">ID Producto:</span> 
-                  <span className="ml-2 font-mono">{service.id_item}</span>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-600">Registrado el:</span> 
-                  <span className="ml-2">
-                    {new Date(service.fecha_y_hora).toLocaleString()}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {/* Acciones */}
-          <div className="mt-auto pt-4 flex flex-wrap gap-3 justify-between items-center border-t border-gray-100">
-            <div className="flex gap-2">
-              <Button 
-                variant="outline"
-                onClick={() => setShowDetails(!showDetails)}
-                className="text-gray-600 hover:bg-gray-100"
-              >
-                {showDetails ? 'Ocultar detalles' : 'Ver detalles'}
-              </Button>
-              
-              <Link href={`/client/services/editar/${service.id_item}`}>
-                <Button variant="outline" className="border-blue-500 text-blue-600 hover:bg-blue-50">
-                  Editar
-                </Button>
-              </Link>
-            </div>
-            
-            <div className="flex gap-2">
-              <Button className="bg-green-600 hover:bg-green-700 text-white">
-                Contratar
-              </Button>
-              <Button 
-                variant="destructive" 
-                onClick={() => onDelete(service.id_item)}
-              >
-                Eliminar
-              </Button>
-            </div>
+    <div className="group relative bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col">
+      {/* Etiquetas de estado y tipo */}
+      <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
+        <span className={`px-3 py-1 rounded-full text-xs font-semibold tracking-wide shadow-md backdrop-blur-sm
+          ${service.estado === 'A' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
+        >
+          {estadoTexto}
+        </span>
+        <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-semibold shadow-md backdrop-blur-sm">
+          SERVICIO
+        </span>
+      </div>
+      {/* Imagen del servicio */}
+      <div className="relative h-48 md:h-56 overflow-hidden flex items-center justify-center bg-gradient-to-t from-gray-200 to-white dark:from-gray-800 dark:to-gray-900">
+        <img
+          src={imageError || !service.image ? '/default-service.jpg' : service.image}
+          alt={service.nombre}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-t-2xl"
+          onError={() => setImageError(true)}
+        />
+      </div>
+      {/* Contenido */}
+      <div className="p-5 flex flex-col flex-grow">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 truncate" title={service.nombre}>
+          {service.nombre}
+        </h3>
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-2xl font-extrabold text-blue-700 dark:text-blue-400">
+            ${service.precio.toFixed(2)}
+          </span>
+          <div className="flex items-center text-sm text-gray-500 dark:text-gray-300">
+            <span className="inline-block w-2 h-2 rounded-full mr-2 bg-green-500" />
+            {service.categoria || 'Sin categoría'}
           </div>
         </div>
+        <div className="mb-4 text-gray-600 dark:text-gray-300 text-sm line-clamp-2">
+          {service.description || 'Servicio profesional'}
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-sm mb-4">
+          <div className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+            <span className="font-semibold">Vendedor:</span>
+            <span className="truncate">{service.vendedor || 'Vendedor desconocido'}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="font-semibold">Fecha:</span>
+            <span>{new Date(service.fecha_y_hora).toLocaleDateString()}</span>
+          </div>
+        </div>
+        {/* Acciones */}
+        <div className="mt-auto flex gap-2">
+          <Button
+            variant="outline"
+            className="w-full flex items-center gap-2 border-blue-500 text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+            onClick={() => setShowDetails(!showDetails)}
+          >
+            {showDetails ? 'Ocultar detalles' : 'Ver detalles'}
+          </Button>
+          <Link href={`/client/services/editar/${service.id_item}`} className="flex-1">
+            <Button variant="outline" className="w-full flex items-center gap-2 border-green-500 text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20">
+              Editar
+            </Button>
+          </Link>
+          <Button
+            className="flex-1 flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+          >
+            Contratar
+          </Button>
+          <Button
+            variant="destructive"
+            className="flex-1 flex items-center gap-2"
+            onClick={() => onDelete(service.id_item)}
+          >
+            Eliminar
+          </Button>
+        </div>
+        {/* Detalles expandibles */}
+        {showDetails && (
+          <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg animate-fadeIn text-xs text-gray-700 dark:text-gray-200">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <span className="font-medium">ID Servicio:</span> <span className="ml-2 font-mono">{service.id_item}</span>
+              </div>
+              <div>
+                <span className="font-medium">Registrado el:</span> <span className="ml-2">{new Date(service.fecha_y_hora).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

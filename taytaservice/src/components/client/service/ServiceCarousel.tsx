@@ -16,6 +16,8 @@ interface Service {
   id_categoria?: number;
   id_vendedor?: number;
   fecha_y_hora?: string;
+  categoria?: string;
+  vendedor?: string;
 }
 
 interface ServiceCarouselProps {
@@ -115,7 +117,11 @@ export function ServiceCarousel({
               id_categoria: service.id_categoria || 1,
               id_vendedor: service.id_vendedor || 1,
               fecha_y_hora: service.fecha_y_hora || new Date().toISOString(),
-              image: service.image
+              image: service.image,
+              categoria: service.categoria,
+              vendedor: service.vendedor,
+              description: service.description,
+              rating: service.rating
             }}
             onDelete={() => {}}
           />

@@ -14,6 +14,7 @@ type Categoria = {
 
 type ProductoFormData = {
   nombre: string;
+  descripcion: string;
   precio: string;
   es_servicio: boolean;
   estado: string;
@@ -50,6 +51,7 @@ export const ProductoForm = ({
   } = useForm<ProductoFormData>({
     defaultValues: {
       nombre: '',
+      descripcion: '',
       precio: '',
       es_servicio: false,
       estado: 'A',
@@ -59,7 +61,6 @@ export const ProductoForm = ({
       ...initialData
     }
   });
-
 
   const esServicio = watch('es_servicio');
   const [selectedCategory, setSelectedCategory] = useState<string>(initialData?.id_categoria || '');
@@ -103,7 +104,7 @@ export const ProductoForm = ({
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Nombre */}
-        <div className="space-y-2">
+        <div className="space-y-2 col-span-2">
           <label className="block text-sm font-medium text-gray-700">
             Nombre del producto/servicio <span className="text-red-500">*</span>
           </label>
@@ -113,13 +114,38 @@ export const ProductoForm = ({
               minLength: {
                 value: 3,
                 message: 'Mínimo 3 caracteres'
+              },
+              maxLength: {
+                value: 100,
+                message: 'Máximo 100 caracteres'
               }
             })} 
             placeholder="Ej: Camiseta de algodón"
-            className="focus:ring-2 text-black focus:ring-blue-500 focus:border-blue-500"
+            className="focus:ring-2 text-black focus:ring-blue-500 focus:border-blue-500 w-full"
           />
           {errors.nombre && (
             <p className="text-red-600 text-xs mt-1">{errors.nombre.message}</p>
+          )}
+        </div>
+
+        {/* Descripción */}
+        <div className="space-y-2 col-span-2">
+          <label className="block text-sm font-medium text-gray-700">
+            Descripción <span className="text-gray-500 text-xs">(Opcional)</span>
+          </label>
+          <textarea
+            {...register('descripcion', {
+              maxLength: {
+                value: 500,
+                message: 'Máximo 500 caracteres'
+              }
+            })}
+            placeholder="Describe tu producto o servicio en detalle"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+            rows={3}
+          />
+          {errors.descripcion && (
+            <p className="text-red-600 text-xs mt-1">{errors.descripcion.message}</p>
           )}
         </div>
 

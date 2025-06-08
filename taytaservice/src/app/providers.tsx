@@ -3,13 +3,34 @@
 
 import { MantineProvider } from '@mantine/core';
 import { AuthProvider } from '../providers/AuthProvider';
+import { SocketProvider } from '../providers/SocketProvider';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactNode } from 'react';
 
-export default function Providers({ children }: { children: React.ReactNode }) {
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
+
+interface ProvidersProps {
+  children: ReactNode;
+}
+
+export default function Providers({ children }: ProvidersProps) {
   return (
-    <MantineProvider theme={{}}>
-      <AuthProvider>
-        {children}
-      </AuthProvider>
-    </MantineProvider>
+    <QueryClientProvider client={queryClient}>
+      <MantineProvider>
+        <AuthProvider>
+          <SocketProvider>
+            {children}
+          </SocketProvider>
+        </AuthProvider>
+      </MantineProvider>
+    </QueryClientProvider>
   );
 }

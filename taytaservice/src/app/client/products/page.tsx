@@ -28,7 +28,7 @@ export default function ProductsPage() {
         
         // Filtrar solo productos (es_servicio = false) y luego formatear
         const productosFormateados = productosData
-          .filter((producto: any) => !producto.es_servicio) // ← Aquí está el filtro clave
+          .filter((producto: any) => !producto.es_servicio)
           .map((producto: any) => ({
             ...producto,
             categoryName: categoriasData.find((cat: any) => cat.id_categoria === producto.id_categoria)?.nombre || 'Sin categoría'
