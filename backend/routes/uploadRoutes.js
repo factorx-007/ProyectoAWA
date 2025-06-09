@@ -1,85 +1,116 @@
-/*const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const authMiddleware = require('../auth/authMiddleware');
-
-const router = express.Router();
-
-const allowedFolders = ['user_imgs', 'item_imgs'];
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const carpeta = req.body.carpeta;
-    if (!allowedFolders.includes(carpeta)) {
-      return cb(new Error('Carpeta inválida, carpeta que se intentó: ' + carpeta));
-    }
-
-    const dir = path.join(__dirname, '..', 'uploads', carpeta);
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: function (req, file, cb) {
-    const timestamp = Date.now();
-    const ext = path.extname(file.originalname);
-    cb(null, `${timestamp}${ext}`);
-  }
-});
-
-const upload = multer({ storage });
-
-router.post('/', authMiddleware, upload.single('imagen'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No se recibió ningún archivo.' });
-  }
-
-  return res.json({ nombreArchivo: req.file.filename });
-});
-
-module.exports = router;
-*/
-
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const authMiddleware = require('../auth/authMiddleware');
-const { log } = require('console');
 
 const router = express.Router();
 
+// Carpetas permitidas para subir archivos
 const allowedFolders = ['user_imgs', 'item_imgs'];
 
+// Configuración de almacenamiento
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // multer ya habrá procesado req.body.carpeta si el campo 'carpeta' fue enviado antes que el archivo
-    const carpeta = req.body?.carpeta;
-    if (!carpeta || !allowedFolders.includes(carpeta)) {
-      return cb(new Error('Carpeta inválida, carpeta que se intentó: ' + carpeta));
+    // Carpeta por defecto
+    let carpeta = 'item_imgs';
+    
+    // Si se envía la carpeta en el query string
+    if (req.query.carpeta && allowedFolders.includes(req.query.carpeta)) {
+      carpeta = req.query.carpeta;
     }
 
+    // Crear la ruta completa de la carpeta
     const dir = path.join(__dirname, '..', 'uploads', carpeta);
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
+    
+    // Asegurarse de que el directorio exista
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    } catch (err) {
+      cb(err);
+    }
   },
   filename: function (req, file, cb) {
+    // Generar un nombre de archivo único con timestamp
     const timestamp = Date.now();
-    const ext = path.extname(file.originalname);
+    const ext = path.extname(file.originalname).toLowerCase();
     cb(null, `${timestamp}${ext}`);
   }
 });
 
-const upload = multer({ storage });
-
-// Ya no necesitas interceptar el body antes
-router.post('/', upload.single('imagen'), (req, res) => {
-  console.log('req.body:', req.body);
-  console.log('req.file:', req.file);
-  if (!req.file) {
-    return res.status(400).json({ error: 'No se recibió ningún archivo.' });
+// Configurar multer con límites de archivo
+const upload = multer({ 
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+    files: 1
+  },
+  fileFilter: (req, file, cb) => {
+    // Validar tipos de archivo
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Tipo de archivo no permitido. Solo se permiten imágenes JPG, PNG y WEBP.'));
+    }
   }
+});
 
-  return res.json({ nombreArchivo: req.file.filename });
+// Ruta para subir imágenes
+router.post('/', 
+  // Middleware de autenticación
+  authMiddleware,
+  
+  // Middleware de multer para manejar la subida
+  upload.single('imagen'),
+  
+  // Manejador de la ruta
+  (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ 
+          success: false,
+          error: 'No se recibió ningún archivo o el archivo es inválido.' 
+        });
+      }
+
+      // Obtener la carpeta del query string o usar la predeterminada
+      const carpeta = (req.query.carpeta && allowedFolders.includes(req.query.carpeta)) 
+        ? req.query.carpeta 
+        : 'item_imgs';
+
+      // Construir la URL de la imagen
+      const imageUrl = `/api/uploads/${carpeta}/${req.file.filename}`;
+      
+      // Respuesta exitosa
+      res.json({ 
+        success: true,
+        nombreArchivo: req.file.filename,
+        url: imageUrl,
+        mensaje: 'Imagen subida correctamente',
+        carpeta: carpeta
+      });
+      
+    } catch (error) {
+      console.error('Error al procesar la imagen:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Error al procesar la imagen',
+        detalle: error.message 
+      });
+    }
+  }
+);
+
+// Manejador de errores global
+router.use((err, req, res, next) => {
+  console.error('Error en uploadRoutes:', err);
+  res.status(500).json({ 
+    success: false,
+    error: 'Error al procesar la solicitud',
+    detalle: err.message 
+  });
 });
 
 module.exports = router;

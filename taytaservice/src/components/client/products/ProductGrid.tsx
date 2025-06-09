@@ -1,5 +1,6 @@
 // src/components/client/products/ProductGrid.tsx
 import ProductoCard from './ProductoCard';
+import { BasicUser } from '@/types';
 
 interface ProductGridProps {
   products: Array<{
@@ -10,6 +11,7 @@ interface ProductGridProps {
     estado?: string;
     stock?: number;
     categoria?: string;
+    vendedor?: BasicUser | null;
   }>;
   onDelete?: (id: number) => void;
 }
@@ -27,7 +29,8 @@ export const ProductGrid = ({ products, onDelete }: ProductGridProps) => {
             image: product.image,
             estado: product.estado,
             stock: product.stock,
-            categoria: product.categoria
+            categoria: product.categoria,
+            vendedor: product.vendedor
           }}
           onDelete={onDelete}
         />

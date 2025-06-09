@@ -22,11 +22,44 @@ const io = new Server(server, {
 });
 
 // Middlewares
-app.use(cors({ origin: 'http://localhost:3000', methods: '*', allowedHeaders: ['Content-Type','Authorization'] }));
 app.use(express.json());
 
+// Configuración de CORS
+app.use((req, res, next) => {
+  // Permitir solicitudes desde el origen del frontend
+  res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+  // Permitir credenciales (cookies, encabezados de autenticación)
+  res.header('Access-Control-Allow-Credentials', 'true');
+  // Métodos HTTP permitidos
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  // Encabezados permitidos
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  
+  // Manejar solicitudes de preflight
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
+
+// Middleware para servir archivos estáticos con autenticación
+const serveStaticWithAuth = (req, res, next) => {
+  // Si es una solicitud de imagen, verificar autenticación
+  if (req.path.match(/\.(jpg|jpeg|png|gif)$/i)) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'No autorizado' });
+    }
+    // Si pasa la autenticación, servir el archivo
+    return express.static(path.join(__dirname, 'uploads', 'item_imgs'))(req, res, next);
+  }
+  next();
+};
+
+// Rutas para servir archivos estáticos con autenticación
 app.use('/api/uploads/user_imgs', require('./auth/authMiddleware'), express.static(path.join(__dirname, 'uploads','user_imgs')));
-app.use('/api/uploads/item_imgs', require('./auth/authMiddleware'), express.static(path.join(__dirname, 'uploads','item_imgs')));
+app.use('/api/uploads/item_imgs', serveStaticWithAuth);
 
 // Rutas REST
 app.use('/api/auth', require('./routes/authRoutes'));

@@ -3,13 +3,11 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Package, Tag, User, Star, Trash2, Edit } from 'lucide-react';
 
-interface Vendedor {
-  id_usuario?: number;
-  nombres?: string;
-  apellidos?: string;
+import { BasicUser } from '@/types';
+
+interface Vendedor extends Omit<BasicUser, 'email' | 'telefono'> {
   email?: string;
   telefono?: string;
-  url_img?: string;
 }
 
 interface Categoria {

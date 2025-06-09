@@ -10,9 +10,10 @@ import { useTheme } from "next-themes";
 interface NavbarProps {
   isScrolled: boolean;
   onMenuClick: () => void;
+  isSidebarOpen?: boolean;
 }
 
-export function Navbar({ isScrolled, onMenuClick }: NavbarProps) {
+export function Navbar({ isScrolled, onMenuClick, isSidebarOpen = false }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
@@ -43,13 +44,29 @@ export function Navbar({ isScrolled, onMenuClick }: NavbarProps) {
         <div className="flex items-center justify-between h-14">
           {/* Left side - Menu button and logo */}
           <div className="flex items-center">
-            <button
+            <motion.button
               onClick={onMenuClick}
               className="p-2 rounded-full text-gray-300 hover:bg-gray-800/50 hover:text-white transition-colors"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               aria-label="Toggle menu"
             >
-              <Menu className="h-5 w-5" />
-            </button>
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={isSidebarOpen ? 'close' : 'menu'}
+                  initial={{ opacity: 0, rotate: -90 }}
+                  animate={{ opacity: 1, rotate: 0 }}
+                  exit={{ opacity: 0, rotate: 90 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {isSidebarOpen ? (
+                    <X className="h-5 w-5" />
+                  ) : (
+                    <Menu className="h-5 w-5" />
+                  )}
+                </motion.span>
+              </AnimatePresence>
+            </motion.button>
             
             <motion.div 
               initial={{ opacity: 0, x: -10 }}
@@ -77,7 +94,7 @@ export function Navbar({ isScrolled, onMenuClick }: NavbarProps) {
           </div>
 
           {/* Right side - User menu and theme toggle */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-4">
             <button
               onClick={toggleTheme}
               className="p-2 rounded-full text-gray-300 hover:bg-gray-800/50 hover:text-white transition-colors"
