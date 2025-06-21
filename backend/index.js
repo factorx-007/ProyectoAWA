@@ -18,7 +18,7 @@ mongoose.connect(process.env.URI)
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: 'http://localhost:3000', methods: ['GET','POST'], allowedHeaders: ['Content-Type','Authorization'] }
+  cors: { origin: 'http://localhost:3000', methods: ['GET','POST', 'PATCH', 'DELETE'], allowedHeaders: ['Content-Type','Authorization'] }
 });
 
 // Middlewares
@@ -31,7 +31,7 @@ app.use((req, res, next) => {
   // Permitir credenciales (cookies, encabezados de autenticación)
   res.header('Access-Control-Allow-Credentials', 'true');
   // Métodos HTTP permitidos
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   // Encabezados permitidos
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   
@@ -78,11 +78,14 @@ app.use('/api/items', require('./auth/authMiddleware'), require('./routes/itemRo
 app.use('/api/productos', require('./auth/authMiddleware'), require('./routes/productoRoutes'));
 app.use('/api/interacciones', require('./auth/authMiddleware'), require('./routes/interaccionRoutes'));
 app.use('/api/calificaciones', require('./auth/authMiddleware'), require('./routes/calificacionRoutes'));
-app.use('/api/compras', require('./auth/authMiddleware'), require('./routes/compraRoutes'));
+//app.use('/api/compras', require('./auth/authMiddleware'), require('./routes/compraRoutes'));
 app.use('/api/denuncias', require('./auth/authMiddleware'), require('./routes/denunciaRoutes'));
 app.use('/api/upload-img', require('./routes/uploadRoutes')); // uploadRoutes incluye su propio middleware
 app.use('/api/chats', require('./auth/authMiddleware'), require('./routes/chatRoutes'));
 app.use('/api/mensajes', require('./auth/authMiddleware'), require('./routes/mensajeRoutes'));
+
+app.use('/api/carritos', require('./auth/authMiddleware'), require('./routes/carritoRoutes'));
+app.use('/api/carritos-productos', require('./auth/authMiddleware'), require('./routes/carritoProductoRoutes'));
 
 // Socket.IO
 const usuariosConectados = {}; // map userId -> socketId

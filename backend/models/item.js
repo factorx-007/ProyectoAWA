@@ -59,13 +59,20 @@ module.exports = (sequelize, DataTypes) => {
       validate: {
         notEmpty: true
       }
+    },
+    url_img: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: true
+      }
     }
   }, {
     tableName: 'items',
     timestamps: false
   });
 
-  Item.associate = function(models) {
+  Item.associate = function (models) {
     Item.belongsTo(models.Categoria, { foreignKey: 'id_categoria' });
     Item.belongsTo(models.Usuario, { foreignKey: 'id_vendedor' });
   };
