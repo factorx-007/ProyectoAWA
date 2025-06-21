@@ -1,7 +1,9 @@
 'use client';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
-import { Package, Tag, User, Star, Trash2, Edit } from 'lucide-react';
+import { Package, Tag, Star, Eye, ShoppingBag } from 'lucide-react';
+import { ImageWithAuth } from '@/components/ui/ImageWithAuth';
+
 
 import { BasicUser } from '@/types';
 
@@ -26,7 +28,7 @@ interface ProductoCardProps {
     stock?: number;
     image?: string;
     categoria?: Categoria | string | null;
-    imagen_url?: string;
+    url_img?: string;
     rating?: number;
     id_vendedor?: number;
     vendedor?: Vendedor | string | null;
@@ -88,11 +90,13 @@ const ProductoCard: React.FC<ProductoCardProps> = ({ producto, onDelete }) => {
 
       {/* Imagen del producto */}
       <div className="relative h-48 md:h-56 overflow-hidden flex items-center justify-center bg-gradient-to-t from-gray-200 to-white dark:from-gray-800 dark:to-gray-900">
-        <img
-          src={producto.imagen_url || producto.image || '/default-product.jpg'}
+
+        <ImageWithAuth
+          imagePath={`item_imgs/${producto.url_img}`}
           alt={producto.nombre}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-t-2xl"
         />
+
       </div>
 
       {/* Contenido */}
@@ -124,15 +128,12 @@ const ProductoCard: React.FC<ProductoCardProps> = ({ producto, onDelete }) => {
           </div>
           <div className="flex items-center gap-1 col-span-2">
             <div className="flex items-center gap-2">
-              <img 
-                src={getVendedorImagen()} 
-                alt={getVendedorNombre()}
+              <ImageWithAuth
+                imagePath={`user_imgs/${producto.vendedor.url_img}`}
+                alt={producto.nombre}
                 className="w-5 h-5 rounded-full object-cover border border-gray-200"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = '/avatar.png';
-                }}
               />
+
               <span className="truncate" title={getVendedorNombre()}>
                 {getVendedorNombre()}
               </span>
@@ -140,22 +141,22 @@ const ProductoCard: React.FC<ProductoCardProps> = ({ producto, onDelete }) => {
           </div>
         </div>
         <div className="mt-auto flex gap-2">
-          <Link
-            href={`/client/VenderProductos/EditarProducto/${producto.id_producto}`}
-            className="flex-1"
-          >
-            <Button variant="outline" className="w-full flex items-center gap-2 border-blue-500 text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20">
-              <Edit className="w-4 h-4" />
-              Editar
+          <Link href={`/client/products/ver/${producto.id_producto}`} passHref>
+            <Button
+              variant="blue"
+              className="flex-1 flex items-center gap-2"
+            >
+              <Eye className="w-4 h-4" />
+              Ver
             </Button>
           </Link>
           <Button
-            variant="destructive"
-            className="flex-1 flex items-center gap-2"
+            variant="green"
+            className="flex items-center gap-2 px-3 py-2 text-sm"
             onClick={() => onDelete && onDelete(producto.id_producto)}
           >
-            <Trash2 className="w-4 h-4" />
-            Eliminar
+            <ShoppingBag className="w-5 h-5 min-w-[20px]" />
+            <span>Añadir al carrito</span>
           </Button>
         </div>
       </div>

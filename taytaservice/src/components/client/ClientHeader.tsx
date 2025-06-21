@@ -12,6 +12,7 @@ export function ClientHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const [cartCount, setCartCount] = useState(0);
 
   // Cerrar menús al hacer clic fuera
   useEffect(() => {
@@ -26,6 +27,57 @@ export function ClientHeader() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    const fetchCartCount = async () => {
+      if (!user?.id) {
+        setCartCount(0);
+        return;
+      }
+      try {
+        const token = localStorage.getItem('auth-token');
+        const carritoRes = await fetch('/api/carritos/buscar', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            campo: 'id_usuario',
+            valor: user.id.toString()
+          })
+        });
+        const carritos = await carritoRes.json();
+        const carrito = Array.isArray(carritos)
+          ? carritos.find((c: any) => c.estado === 'E')
+          : null;
+
+        if (!carrito) {
+          setCartCount(0);
+          return;
+        }
+
+        const productosRes = await fetch('/api/carritos-productos/buscar', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            campo: 'id_carrito',
+            valor: carrito.id_carrito.toString()
+          })
+        });
+        const productos = await productosRes.json();
+        const total = productos.reduce((sum: number, prod: any) => sum + (prod.cantidad || 0), 0);
+        setCartCount(total);
+      } catch {
+        setCartCount(0);
+      }
+    };
+
+    fetchCartCount();
+  }, [user?.id]);
 
   const navLinks = [
     { name: 'Inicio', href: '/client' },
@@ -76,9 +128,11 @@ export function ClientHeader() {
             {/* Cart */}
             <Link href="/client/cart" className="p-2 text-gray-600 hover:text-blue-600 relative">
               <FiShoppingCart className="h-6 w-6" />
-              <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                3
-              </span>
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
             </Link>
 
             {/* User Profile */}

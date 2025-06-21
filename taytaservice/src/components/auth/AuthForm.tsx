@@ -2,31 +2,31 @@
 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import React from 'react';
+import { registerSchema, loginSchema } from '../../features/types';
+import { RegisterFormData, LoginFormData } from '../../features/types';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
-import React from 'react';
-import { loginSchema, registerSchema } from '../../features/types';
-import { LoginFormData, RegisterFormData } from '../../features/types';
 
-type AuthFormProps = {
+interface AuthFormProps {
   type: 'login' | 'register';
-  onSubmit: (data: RegisterFormData) => void;
-};
+  onSubmit: (data: RegisterFormData | LoginFormData) => void;
+}
 
-export const AuthForm = ({ type, onSubmit }: AuthFormProps) => {
-  const schema = type === 'login' ? loginSchema : registerSchema;
+export const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit }) => {
+  const schema = type === 'register' ? registerSchema : loginSchema;
 
   const {
     register,
     handleSubmit,
     formState: { errors }
-  } = useForm<RegisterFormData>({
+  } = useForm<RegisterFormData | LoginFormData>({
     resolver: zodResolver(schema),
   });
 
-  const renderFormFields = () => {
-    if (type === 'register') {
-      return (
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {type === 'register' && (
         <>
           <div>
             <Input placeholder="Nombres" {...register('nombres')} />
@@ -45,19 +45,20 @@ export const AuthForm = ({ type, onSubmit }: AuthFormProps) => {
             {errors.telefono && <p className="text-red-500 text-sm">{String(errors.telefono.message)}</p>}
           </div>
           <div>
-            <Input placeholder="URL de imagen (opcional)" {...register('url_img')} />
-            {errors.url_img && <p className="text-red-500 text-sm">{String(errors.url_img.message)}</p>}
+            <label className="block text-sm font-medium text-gray-400">Foto de perfil</label>
+            <input
+              type="file"
+              accept="image/*"
+              {...register('imagen' as const)}
+              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {errors.imagen && <p className="text-red-500 text-sm">{String(errors.imagen.message)}</p>}
           </div>
+
         </>
-      );
-    }
+      )}
 
-    // Aquí podrías agregar campos para login en el futuro
-  };
-
-  return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      {renderFormFields()}
+      {/* Campos comunes */}
       <div>
         <Input placeholder="Email" {...register('email')} />
         {errors.email && <p className="text-red-500 text-sm">{String(errors.email.message)}</p>}

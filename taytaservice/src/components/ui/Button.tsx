@@ -2,7 +2,7 @@ import React from 'react';
 import { ButtonHTMLAttributes } from 'react';
 import { Loader2 } from 'lucide-react';
 
-type ButtonVariant = 'default' | 'outline' | 'destructive' | 'ghost' | 'link';
+type ButtonVariant = 'default' | 'outline' | 'destructive' | 'ghost' | 'link' | 'green' | 'blue';
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
@@ -29,6 +29,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       destructive: 'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500',
       ghost: 'hover:bg-gray-800/50 text-gray-200 hover:text-white',
       link: 'text-blue-500 hover:underline hover:bg-transparent p-0 h-auto',
+      green: 'bg-green-600 text-white hover:bg-green-700 focus-visible:ring-green-500',
+      blue: 'bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-blue-500',
     };
 
     const sizeStyles = {
