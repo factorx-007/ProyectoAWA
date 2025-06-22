@@ -21,6 +21,7 @@ type ProductoFormData = {
   id_categoria: string;
   stock: string;
   id_vendedor: number;
+  imagen: FileList;
 };
 
 import { SubmitHandler } from 'react-hook-form';
@@ -209,6 +210,24 @@ export const ProductoForm = ({
           </Select>
           {errors.id_categoria && (
             <p className="text-red-600 text-xs mt-1">{errors.id_categoria.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-2 col-span-2">
+          <label className="block text-sm font-medium text-gray-700">
+            Imagen del producto/servicio <span className="text-red-500">*</span>
+          </label>
+          <Input
+            type="file"
+            accept="image/*"
+            {...register('imagen', {
+              required: 'La imagen es obligatoria',
+              validate: files => files && files.length > 0 || 'Debes seleccionar una imagen'
+            })}
+            className="focus:ring-2 text-black focus:ring-blue-500 focus:border-blue-500 w-full"
+          />
+          {errors.imagen && (
+            <p className="text-red-600 text-xs mt-1">{errors.imagen.message}</p>
           )}
         </div>
 

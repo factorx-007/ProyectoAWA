@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CartItem } from '@/components/client/cart/CartItem';
 import Link from 'next/link';
 import { FiArrowLeft } from 'react-icons/fi';
+import { useAuth } from '@/providers/AuthProvider';
+import PaymentModal from '@/components/client/cart/PaymentModal';
 
 export interface CartProduct {
   id: number;
@@ -11,41 +13,181 @@ export interface CartProduct {
   price: number;
   image: string;
   quantity: number;
+  stock: number;
+  url_img?: string;
+  es_servicio: boolean;
+  id_carrito_producto: number;
 }
 
 export default function CartPage() {
-  const [cartItems, setCartItems] = useState<CartProduct[]>([
-    {
-      id: 1,
-      name: 'Producto Premium',
-      price: 199.99,
-      image: '/images/product1.jpg',
-      quantity: 2,
-    },
-    {
-      id: 2,
-      name: 'Servicio de Diseño',
-      price: 499,
-      image: '/images/service1.jpg',
-      quantity: 1,
-    },
-  ]);
+  const { user } = useAuth();
+  const [cartItems, setCartItems] = useState<CartProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
 
-  const updateQuantity = (id: number, quantity: number) => {
+  useEffect(() => {
+    const fetchCart = async () => {
+      if (!user?.id) return;
+
+      try {
+        const token = localStorage.getItem('auth-token');
+        // 1. Buscar carrito abierto del usuario
+        const carritoRes = await fetch(`${API_BASE_URL}/api/carritos/buscar`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            campo: 'id_usuario',
+            valor: user.id.toString()
+          })
+        });
+        const carritos = await carritoRes.json();
+        const carrito = Array.isArray(carritos)
+          ? carritos.find((c: any) => c.estado === 'E')
+          : null;
+
+        if (!carrito) {
+          setCartItems([]);
+          setLoading(false);
+          return;
+        }
+
+        // 2. Buscar productos del carrito
+        const productosRes = await fetch(`${API_BASE_URL}/api/carritos-productos/buscar`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            campo: 'id_carrito',
+            valor: carrito.id_carrito.toString()
+          })
+        });
+        const productos = await productosRes.json();
+
+        // 3. Obtener detalles de cada producto (item)
+        const items: CartProduct[] = await Promise.all(
+          productos.map(async (prod: any) => {
+            // Obtener detalles del item
+            const itemRes = await fetch(`${API_BASE_URL}/api/items/buscar`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                campo: 'id_item',
+                valor: prod.id_item.toString()
+              })
+            });
+            const [item] = await itemRes.json();
+            return {
+              id: prod.id_item,
+              id_carrito_producto: prod.id_carrito_producto,
+              name: item.nombre,
+              price: item.precio,
+              quantity: prod.cantidad,
+              stock: item.stock ?? 99,
+              url_img: item.url_img ?? '',
+              es_servicio: item.es_servicio
+            };
+          })
+        );
+
+        setCartItems(items);
+      } catch (error) {
+        setCartItems([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCart();
+  }, [user?.id]);
+
+  const updateQuantity = async (id: string, quantity: number) => {
     setCartItems((prev) =>
       prev.map((item) =>
-        item.id === id ? { ...item, quantity: Math.max(1, quantity) } : item
+        String(item.id) === id ? { ...item, quantity: Math.max(1, quantity) } : item
       )
     );
   };
 
-  const removeItem = (id: number) => {
-    setCartItems((prev) => prev.filter((item) => item.id !== id));
+  const removeItem = async (id_carrito_producto: string) => {
+    try {
+      const token = localStorage.getItem('auth-token');
+      const carritoRes = await fetch(`${API_BASE_URL}/api/carritos/buscar`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          campo: 'id_usuario',
+          valor: user?.id.toString()
+        })
+      });
+      const carritos = await carritoRes.json();
+      const carrito = Array.isArray(carritos)
+        ? carritos.find((c: any) => c.estado === 'E')
+        : null;
+
+      if (!carrito) return;
+
+      // 2. Eliminar el producto del carrito
+      await fetch(`${API_BASE_URL}/api/carritos-productos/${id_carrito_producto}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+
+      // 3. Verificar si quedan productos en el carrito
+      const productosRes = await fetch(`${API_BASE_URL}/api/carritos-productos/buscar`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          campo: 'id_carrito',
+          valor: carrito.id_carrito.toString()
+        })
+      });
+      const productos = await productosRes.json();
+
+      // 4. Si no quedan productos, eliminar el carrito
+      if (!productos || productos.length === 0) {
+        await fetch(`${API_BASE_URL}/api/carritos/${carrito.id_carrito}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+      }
+
+      // 5. Actualiza el estado local
+      setCartItems((prev) => prev.filter((item) => String(item.id_carrito_producto) !== id_carrito_producto));
+    } catch (error) {
+      // Manejo de error
+    }
   };
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shipping = subtotal > 500 ? 0 : 49.99;
   const total = subtotal + shipping;
+
+  if (loading) {
+    return <div className="text-center py-12">Cargando carrito...</div>;
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -65,10 +207,14 @@ export default function CartPage() {
               <ul className="divide-y divide-gray-200">
                 {cartItems.map((item) => (
                   <CartItem
-                    key={item.id}
-                    item={item}
-                    updateQuantity={updateQuantity}
-                    removeItem={removeItem}
+                    key={item.id_carrito_producto}
+                    item={{
+                      ...item,
+                      id: String(item.id),
+                      id_carrito_producto: item.id_carrito_producto
+                    }}
+                    onQuantityChange={updateQuantity}
+                    onRemove={(id) => removeItem(String(item.id_carrito_producto))}
                   />
                 ))}
               </ul>
@@ -108,9 +254,9 @@ export default function CartPage() {
                 </div>
               </div>
 
-              <button className="mt-6 w-full bg-green-600 text-white py-3 px-4 rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                Proceder al pago
-              </button>
+            
+
+        <PaymentModal isOpen={showModal} onClose={() => setShowModal(false)} />
             </div>
 
             <div className="mt-4 bg-white shadow overflow-hidden sm:rounded-lg p-6">

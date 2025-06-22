@@ -1,6 +1,5 @@
-// features/auth/services/AuthService.ts
 import axios from 'axios';
-import { LoginFormData, RegisterFormData, User } from '../../types';
+import { LoginFormData, RegisterFormData } from '../../types';
 
 interface AuthResponse {
   token: string;
@@ -12,15 +11,17 @@ interface AuthResponse {
 }
 
 export const AuthService = {
-  async login(credentials: LoginFormData) {
-    const response = await axios.post<{ accessToken: string; refreshToken: string }>('/api/auth/login', credentials);
+  async login(credentials: LoginFormData): Promise<AuthResponse> {
+    const response = await axios.post<{ accessToken: string; refreshToken: string }>(
+      '/api/auth/login',
+      credentials
+    );
     const { accessToken, refreshToken } = response.data;
 
     if (!accessToken) {
       throw new Error('Token no recibido');
     }
 
-    // Decodifica el token para obtener el usuario
     const decoded = parseJwt(accessToken);
 
     return {
@@ -34,7 +35,7 @@ export const AuthService = {
     };
   },
 
-register: async (userData: RegisterFormData) => {
+  async register(userData: RegisterFormData) {
     const response = await axios.post('/api/usuarios', userData);
     return response.data;
   }

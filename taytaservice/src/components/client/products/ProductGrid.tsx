@@ -12,6 +12,7 @@ interface ProductGridProps {
     stock?: number;
     categoria?: string;
     vendedor?: BasicUser | null;
+    url_img?: string;
   }>;
   onDelete?: (id: number) => void;
 }
@@ -26,7 +27,7 @@ export const ProductGrid = ({ products, onDelete }: ProductGridProps) => {
             id_producto: product.id,
             nombre: product.name,
             precio: product.price,
-            image: product.image,
+            image: product.url_img,
             estado: product.estado,
             stock: product.stock,
             categoria: product.categoria,

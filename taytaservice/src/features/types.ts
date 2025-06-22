@@ -16,7 +16,19 @@ export const registerSchema = z.object({
   dni: z.string().min(8, 'DNI inválido'),
   contrasena: z.string().min(6, 'Mínimo 6 caracteres'),
   telefono: z.string().min(8, 'Teléfono inválido'),
-  url_img: z.string().url('URL inválida').optional()
+  imagen: z
+    .any()
+    .refine(
+      (files) => files instanceof FileList && files.length === 1,
+      'Debes seleccionar una imagen'
+    )
+    .refine(
+      (files) => {
+        const file = (files as FileList)[0];
+        return file && file.type.startsWith('image/');
+      },
+      'El archivo debe ser una imagen'
+    ),
 });
 
 

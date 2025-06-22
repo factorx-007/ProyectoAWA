@@ -1,4 +1,4 @@
-const BaseService = require('./BaseService');
+/*const BaseService = require('./BaseService');
 const { Compra } = require('../models');
 
 class CompraService extends BaseService {
@@ -8,3 +8,4 @@ class CompraService extends BaseService {
 }
 
 module.exports = new CompraService();
+*/

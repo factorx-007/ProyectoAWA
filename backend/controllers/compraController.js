@@ -1,4 +1,4 @@
-const BaseController = require('./BaseController');
+/*const BaseController = require('./BaseController');
 const compraService = require('../services/compraService');
 
 class CompraController extends BaseController {
@@ -8,3 +8,4 @@ class CompraController extends BaseController {
 }
 
 module.exports = new CompraController();
+*/

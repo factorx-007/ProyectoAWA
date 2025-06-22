@@ -1,47 +1,117 @@
-// app/client/orders/page.tsx
 'use client';
+import { useEffect, useState } from 'react';
 import { OrderCard } from '@/components/client/orders/OrderCard';
 import Link from 'next/link';
-
-const orders = [
-  {
-    id: 'ORD-12345',
-    date: '15 Oct 2023',
-    status: 'Completado',
-    items: [
-      { name: 'Producto Premium', quantity: 1, price: 199.99 },
-      { name: 'Servicio Básico', quantity: 2, price: 99.99 },
-    ],
-    total: 399.97,
-    trackingNumber: 'TRK789456123',
-  },
-  // ... más órdenes
-];
+import { useAuth } from '@/providers/AuthProvider';
 
 export default function OrdersPage() {
+  const { user } = useAuth();
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      if (!user?.id) return;
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('auth-token');
+        // 1. Obtener carritos con estado 'V'
+        const res = await fetch(`${API_BASE_URL}/api/carritos/buscar`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            campo: 'id_usuario',
+            valor: user.id.toString()
+          })
+        });
+        const carritos = await res.json();
+        const ordenes = Array.isArray(carritos)
+          ? carritos.filter((c: any) => c.estado === 'V')
+          : [];
+
+        // 2. Para cada carrito, obtener productos y detalles
+        const ordersData = await Promise.all(
+          ordenes.map(async (carrito: any) => {
+            // Productos del carrito
+            const productosRes = await fetch(`${API_BASE_URL}/api/carritos-productos/buscar`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                campo: 'id_carrito',
+                valor: carrito.id_carrito.toString()
+              })
+            });
+            const productos = await productosRes.json();
+
+            // Detalles de cada producto
+            const items = await Promise.all(
+              productos.map(async (prod: any) => {
+                const itemRes = await fetch(`${API_BASE_URL}/api/items/buscar`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    campo: 'id_item',
+                    valor: prod.id_item.toString()
+                  })
+                });
+                const [item] = await itemRes.json();
+                return {
+                  name: item.nombre,
+                  quantity: prod.cantidad,
+                  price: item.precio
+                };
+              })
+            );
+
+            // Calcular total
+            const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+
+            return {
+              id: `ORD-${carrito.id_carrito}`,
+              date: carrito.fecha_compra
+                ? new Date(carrito.fecha_compra).toLocaleDateString()
+                : '',
+              status: 'Completado',
+              items,
+              total,
+              trackingNumber: carrito.id_carrito // o algún campo de tracking si tienes
+            };
+          })
+        );
+
+        setOrders(ordersData);
+      } catch (err) {
+        setOrders([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, [user?.id]);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Mis Pedidos</h1>
-        <div className="relative">
-          <select className="appearance-none bg-white border border-gray-300 rounded-md pl-3 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            <option>Filtrar por estado</option>
-            <option>Completados</option>
-            <option>En proceso</option>
-            <option>Cancelados</option>
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-          </div>
-        </div>
       </div>
 
       <div className="space-y-6">
-        {orders.length > 0 ? (
+        {loading ? (
+          <div className="text-center py-12">Cargando pedidos...</div>
+        ) : orders.length > 0 ? (
           orders.map(order => (
-            <OrderCard key={order.id} order={order as any} />
+            <OrderCard key={order.id} order={order} />
           ))
         ) : (
           <div className="text-center py-12 bg-white rounded-lg shadow">
