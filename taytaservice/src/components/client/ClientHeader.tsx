@@ -42,7 +42,7 @@ export function ClientHeader() {
         <div className="flex justify-between items-center py-4">
           {/* Logo */}
           <Link href="/client" className="text-2xl font-bold text-blue-600">
-            Vendel<span className="text-green-600">Plus</span>
+            Tayta<span className="text-green-600">Service</span>
           </Link>
 
           {/* Desktop Navigation */}
