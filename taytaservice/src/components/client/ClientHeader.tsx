@@ -84,6 +84,7 @@ export function ClientHeader() {
     { name: 'Productos', href: '/client/products' },
     { name: 'Servicios', href: '/client/services' },
     { name: 'Mis Pedidos', href: '/client/orders' },
+    { name: 'Mis ventas', href: '/client/sells' },
     { name: 'Chats', href: '/client/chats' },
   ];
 

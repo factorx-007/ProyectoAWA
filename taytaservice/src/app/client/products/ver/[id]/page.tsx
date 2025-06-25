@@ -4,8 +4,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { ProductoService } from '@/features/productos/services/ProductoService';
 import { ImageWithAuth } from '@/components/ui/ImageWithAuth';
 import { Button } from '@/components/ui/Button';
-import { ShoppingBag, MessageCircle, Star, Package } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { ShoppingBag, MessageCircle, Star, Package, Loader2 } from 'lucide-react';
+import { Toaster, toast } from 'react-hot-toast';
 import { useAuth } from '@/providers/AuthProvider';
 import Link from 'next/link';
 
@@ -52,6 +52,8 @@ export default function DetalleProductoPage() {
   // Estados para la cantidad seleccionada
   const [cantidad, setCantidad] = useState(1);
 
+  const [adding, setAdding] = useState(false);
+
   const handleIncrement = () => {
     const stock = producto?.stock ?? 0;
     if (cantidad < stock) {
@@ -65,73 +67,77 @@ export default function DetalleProductoPage() {
     }
   };
 
-const handleAddToCart = async () => {
-  if (!user?.id) {
-    toast.error('Debes iniciar sesión para añadir al carrito');
-    return;
-  }
-  if (!producto) return;
+  const handleAddToCart = async () => {
+    if (!user?.id) {
+      toast.error('Debes iniciar sesión para añadir al carrito');
+      return;
+    }
+    if (!producto) return;
+    setAdding(true);
 
-  try {
-    const token = localStorage.getItem('auth-token');
-    if (!token) throw new Error('No autenticado');
+    try {
+      const token = localStorage.getItem('auth-token');
+      if (!token) throw new Error('No autenticado');
 
-    // 1. Buscar carrito abierto (estado "E") del usuario
-    let carritoRes = await fetch(`/api/carritos/buscar`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        campo: 'id_usuario',
-        valor: user.id.toString()
-      })
-    });
-
-    let carritoData = await carritoRes.json();
-    let carrito = Array.isArray(carritoData)
-      ? carritoData.find((c: any) => c.estado === 'E')
-      : null;
-
-    // 2. Si no existe, crear uno
-    if (!carrito) {
-      const crearRes = await fetch(`/api/carritos`, {
+      // 1. Buscar carrito abierto (estado "E") del usuario
+      let carritoRes = await fetch(`/api/carritos/buscar`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          id_usuario: user.id,
-          estado: 'E'
+          campo: 'id_usuario',
+          valor: user.id.toString()
         })
       });
-      if (!crearRes.ok) throw new Error('No se pudo crear el carrito');
-      carrito = await crearRes.json();
+
+      let carritoData = await carritoRes.json();
+      let carrito = Array.isArray(carritoData)
+        ? carritoData.find((c: any) => c.estado === 'E')
+        : null;
+
+      // 2. Si no existe, crear uno
+      if (!carrito) {
+        const crearRes = await fetch(`/api/carritos`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            id_usuario: user.id,
+            estado: 'E'
+          })
+        });
+        if (!crearRes.ok) throw new Error('No se pudo crear el carrito');
+        carrito = await crearRes.json();
+      }
+
+      // 3. Añadir producto al carrito
+      const addRes = await fetch(`/api/carritos-productos`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id_carrito: carrito.id_carrito,
+          id_item: producto.id_item,
+          cantidad: cantidad
+        })
+      });
+
+      if (!addRes.ok) throw new Error('No se pudo añadir el producto al carrito');
+
+      toast.success('Producto añadido al carrito');
+      router.push('/client/cart');
+    } catch (error: any) {
+      toast.error(error.message || 'Error al añadir al carrito');
+    } finally {
+      setAdding(false);
     }
-
-    // 3. Añadir producto al carrito
-    const addRes = await fetch(`/api/carritos-productos`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        id_carrito: carrito.id_carrito,
-        id_item: producto.id_item,
-        cantidad: cantidad
-      })
-    });
-
-    if (!addRes.ok) throw new Error('No se pudo añadir el producto al carrito');
-
-    toast.success('Producto añadido al carrito');
-  } catch (error: any) {
-    toast.error(error.message || 'Error al añadir al carrito');
-  }
-};
+  };
 
 
   const handleChangeCantidad = (e: { target: { value: any; }; }) => {
@@ -257,6 +263,7 @@ const handleAddToCart = async () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <Toaster />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
         {/* Contenedor de imagen con efecto de lupa */}
         <div className="relative">
@@ -386,7 +393,7 @@ const handleAddToCart = async () => {
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                   Producto
                 </span>
-                
+
                 {/* Control de cantidad */}
                 <div className="flex items-center space-x-3">
                   <label htmlFor="cantidad" className="text-sm font-medium text-gray-700">
@@ -429,9 +436,13 @@ const handleAddToCart = async () => {
               <Button
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                 onClick={handleAddToCart}
-                disabled={producto.es_servicio ? false : !producto.stock || producto.stock === 0}
+                disabled={adding || (producto.es_servicio ? false : !producto.stock || producto.stock === 0)}
               >
-                <ShoppingBag className="w-5 h-5 mr-2" />
+                {adding ? (
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                ) : (
+                  <ShoppingBag className="w-5 h-5 mr-2" />
+                )}
                 {producto.es_servicio ? 'Solicitar Servicio' : 'Añadir al Carrito'}
               </Button>
 

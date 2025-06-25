@@ -2,26 +2,28 @@
 
 import { AuthForm } from "../../../components/auth/AuthForm";
 import { toast } from "react-hot-toast";
-import React from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoginFormData, User } from "@/features/types";
 import { AuthService } from "@/features/auth/services/AuthService";
 import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (data: LoginFormData) => {
+    setLoading(true);
     try {
       const { token, user } = await AuthService.login(data);
-      
       localStorage.setItem('auth-token', token);
       localStorage.setItem('user', JSON.stringify(user));
-      
-      // Fuerza recarga para asegurar que AuthGuard detecte los cambios
       window.location.href = '/client';
     } catch (error) {
       toast.error('Error al iniciar sesión');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -52,7 +54,7 @@ export default function LoginPage() {
           <h3 className="text-2xl font-semibold mb-6 text-center text-gray-800">
             Iniciar Sesión
           </h3>
-          <AuthForm type="login" onSubmit={handleSubmit} />
+          <AuthForm type="login" onSubmit={handleSubmit} loading={loading} />
           <p className="text-sm text-center mt-6 text-gray-600">
             ¿No tienes una cuenta?{" "}
             <button

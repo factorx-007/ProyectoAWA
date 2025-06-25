@@ -2,9 +2,9 @@
 'use client';
 
 import { FiTrash2, FiPlus, FiMinus } from 'react-icons/fi';
-import Image from 'next/image';
 import { useState } from 'react';
 import { ImageWithAuth } from '@/components/ui/ImageWithAuth';
+import { Toaster, toast } from 'react-hot-toast';
 
 interface CartItemProps {
   item: {
@@ -39,6 +39,7 @@ export function CartItem({ item, onRemove, onQuantityChange }: CartItemProps) {
   };
 
   const handleRemove = () => {
+    toast.success('Item eliminado');
     onRemove(String(item.id_carrito_producto));
   };
 
