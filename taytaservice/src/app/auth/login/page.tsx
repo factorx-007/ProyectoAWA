@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { LoginFormData, User } from "@/features/types";
 import { AuthService } from "@/features/auth/services/AuthService";
 import { motion } from "framer-motion";
-import { Loader2 } from "lucide-react";
+
 
 export default function LoginPage() {
   const router = useRouter();

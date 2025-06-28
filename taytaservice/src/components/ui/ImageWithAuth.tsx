@@ -17,7 +17,6 @@ export const ImageWithAuth: React.FC<ImageWithAuthProps> = ({ imagePath, alt = '
   useEffect(() => {
     const fetchImage = async () => {
       try {
-        
         const token = localStorage.getItem('auth-token');
         if (!token) throw new Error('Token no encontrado');
 
@@ -28,6 +27,11 @@ export const ImageWithAuth: React.FC<ImageWithAuthProps> = ({ imagePath, alt = '
         });
 
         if (!response.ok) {
+          if (response.status === 404) {
+            console.error(`Imagen no encontrada en el servidor: ${imagePath}`);
+          } else {
+            console.error(`Error al obtener la imagen, código de estado: ${response.status}`);
+          }
           throw new Error('Error al obtener imagen');
         }
 

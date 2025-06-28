@@ -100,6 +100,8 @@ export default function PaymentModal() {
     e.preventDefault();
     setError('');
 
+    setPaying(true);
+
     const error = validarCampos(name, cardNumber, expiration, cvc, setError);
     if (error) {
       setPaying(false);
@@ -220,7 +222,6 @@ export default function PaymentModal() {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success(`✅ ${data.message}.`);
         closeModal();
         return true;
       } else {
@@ -275,6 +276,21 @@ export default function PaymentModal() {
         });
         const productos = await productosRes.json();
 
+        //actualizar si no es_servicio:
+        for (const prod of productos) {
+          if (!prod.es_servicio) {
+            console.log("--->" + prod.es_servicio);
+            await fetch(`${API_BASE_URL}/api/productos/restar-stock/${prod.id_item}`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ cantidad: prod.cantidad })
+            });
+          }
+        }
+
         // 3. Calcular el total sumando precio * cantidad de cada producto
         let totalCarrito = 0;
         for (const prod of productos) {
@@ -326,7 +342,8 @@ export default function PaymentModal() {
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black bg-opacity-30">
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/30">
+
           <div
             ref={modalRef}
             className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 animate-fade-in"
