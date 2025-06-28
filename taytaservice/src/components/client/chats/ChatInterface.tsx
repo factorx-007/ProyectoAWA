@@ -2,6 +2,18 @@
 'use client';
 import React, { useEffect, useRef, useState } from 'react';
 import { Socket } from 'socket.io-client';
+import { 
+  MessageCircle, 
+  Search, 
+  Paperclip, 
+  Send, 
+  User, 
+  Star, 
+  CheckCircle, 
+  Clock 
+} from 'lucide-react';
+import { ImageWithAuth } from '@/components/ui/ImageWithAuth';
+import { Button } from '@/components/ui/Button';
 
 // Definimos _id opcional para manejar mensajes temporales
 export interface User {
@@ -9,11 +21,14 @@ export interface User {
   nombres: string;
   apellidos: string;
   url_img?: string;
+  rating?: number;
 }
 
 export interface Chat {
   _id: string;
   idParticipantes: number[];
+  ultimoMensaje?: string;
+  fechaUltimoMensaje?: string;
 }
 
 export interface Mensaje {
@@ -23,6 +38,7 @@ export interface Mensaje {
   contenido: string;
   timestamp: string;
   _idTemp?: string;
+  estado?: 'enviado' | 'entregado' | 'leido';
 }
 
 interface ChatInterfaceProps {
@@ -37,261 +53,330 @@ interface ChatInterfaceProps {
   onSelectChat: (chatId: string) => void;
 }
 
-// --- Subcomponentes internos para mejor organización y escalabilidad ---
+// Componente de Sidebar de Chats
+const ChatSidebar: React.FC<{
+  chats: Chat[];
+  users: User[];
+  userId: number;
+  activeChatId: string;
+  onSelectChat: (chatId: string) => void;
+  onSelectUser: (userId: number) => void;
+}> = ({ chats, users, userId, activeChatId, onSelectChat, onSelectUser }) => {
+  const [searchTerm, setSearchTerm] = useState('');
 
-// Sidebar de chats y usuarios
-function ChatSidebar({ chats, users, userId, activeChatId, onSelectUser, onSelectChat }: {
-  chats: Chat[]; users: User[]; userId: number; activeChatId: string;
-  onSelectUser: (otherId: number) => void; onSelectChat: (chatId: string) => void;
-}) {
-  const [search, setSearch] = useState('');
-  const filteredUsers = users.filter(u =>
-    u.id_usuario !== userId &&
-    (`${u.nombres} ${u.apellidos}`.toLowerCase().includes(search.toLowerCase()))
-  );
-  return (
-    <aside className="w-80 bg-white border-r flex flex-col h-full">
-      <div className="p-4 border-b">
-        <input
-          className="w-full px-3 py-2 rounded border"
-          placeholder="Buscar usuario..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        <select
-          className="mt-2 w-full px-2 py-1 rounded border"
-          onChange={e => onSelectUser(Number(e.target.value))}
-          defaultValue=""
-        >
-          <option disabled value="">Nueva conversación...</option>
-          {filteredUsers.map(u => (
-            <option key={u.id_usuario} value={u.id_usuario}>
-              {u.nombres} {u.apellidos}
-            </option>
-          ))}
-        </select>
-      </div>
-      <ul className="flex-1 overflow-y-auto divide-y">
-        {chats.map(c => {
-          const otherId = c.idParticipantes.find(id => id !== userId)!;
-          const u = users.find(u => u.id_usuario === otherId);
-          return (
-            <li
-              key={c._id}
-              onClick={() => onSelectChat(c._id)}
-              className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-blue-50 transition ${c._id === activeChatId ? 'bg-blue-100 font-semibold' : ''}`}
-            >
-              <img src={u?.url_img || '/avatar.png'} alt="avatar" className="w-10 h-10 rounded-full object-cover bg-gray-200" />
-              <span>{u ? `${u.nombres} ${u.apellidos}` : 'Usuario desconocido'}</span>
-            </li>
-          );
-        })}
-      </ul>
-    </aside>
-  );
-}
+  // Eliminar chats duplicados y asegurar que solo se muestre un chat por usuario
+  const filteredChats = chats
+    .filter(chat => {
+      const otherUserId = chat.idParticipantes.find(id => id !== userId);
+      const otherUser = users.find(u => u.id_usuario === otherUserId);
+      return otherUser && 
+        (`${otherUser.nombres} ${otherUser.apellidos}`)
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
+    })
+    // Eliminar chats duplicados (mismo usuario)
+    .filter((chat, index, self) => {
+      const otherUserId = chat.idParticipantes.find(id => id !== userId);
+      // Mantener solo el primer chat con este usuario
+      return index === self.findIndex(c => {
+        const otherUserInList = c.idParticipantes.find(id => id !== userId);
+        return otherUserInList === otherUserId;
+      });
+    })
+    // Ordenar por fecha del último mensaje (más reciente primero)
+    .sort((a, b) => {
+      const dateA = a.fechaUltimoMensaje ? new Date(a.fechaUltimoMensaje).getTime() : 0;
+      const dateB = b.fechaUltimoMensaje ? new Date(b.fechaUltimoMensaje).getTime() : 0;
+      return dateB - dateA;
+    });
 
-// Header del chat activo
-function ChatHeader({ user }: { user?: User }) {
   return (
-    <header className="flex items-center gap-3 px-6 py-4 border-b bg-white sticky top-0 z-10">
-      <img src={user?.url_img || '/avatar.png'} alt="avatar" className="w-10 h-10 rounded-full object-cover bg-gray-200" />
-      <div>
-        <div className="font-semibold">{user ? `${user.nombres} ${user.apellidos}` : 'Usuario desconocido'}</div>
-        {/* Aquí podrías mostrar estado online, typing, etc. */}
-      </div>
-    </header>
-  );
-}
-
-// Burbuja de mensaje mejorada con gradiente, sombra y microinteracciones
-function MessageBubble({ mensaje, isOwn, user }: { mensaje: Mensaje; isOwn: boolean; user?: User }) {
-  return (
-    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-2 group`}>
-      {!isOwn && (
-        <img
-          src={user?.url_img || '/avatar.png'}
-          alt="avatar"
-          className="w-8 h-8 rounded-full mr-2 self-end bg-gray-200 border-2 border-white shadow"
-        />
-      )}
-      <div
-        className={`relative max-w-xs px-4 py-2 rounded-2xl text-sm transition-all duration-200 shadow-lg ${isOwn
-          ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white rounded-br-lg'
-          : 'bg-gradient-to-br from-gray-100 to-gray-300 text-gray-900 rounded-bl-lg'} group-hover:scale-[1.03]`}
-        title={new Date(mensaje.timestamp).toLocaleString()}
-      >
-        {mensaje.contenido}
-        <div className="text-[10px] text-right mt-1 opacity-60 select-none">
-          {new Date(mensaje.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+    <div className="w-96 bg-gradient-to-br from-blue-50 to-blue-100 border-r border-gray-200 shadow-lg">
+      <div className="p-6 bg-white border-b">
+        <div className="flex items-center space-x-4 mb-4">
+          <MessageCircle className="text-blue-600 w-8 h-8" />
+          <h2 className="text-2xl font-bold text-gray-800">Mensajes</h2>
         </div>
-        {/* Smart microinteracción: mostrar icono al hacer hover */}
-        <span className={`absolute -top-3 right-2 text-xs opacity-0 group-hover:opacity-80 transition-opacity ${isOwn ? 'text-blue-400' : 'text-gray-400'}`}>✓</span>
+        
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Buscar conversaciones..."
+            className="w-full pl-10 pr-4 py-3 rounded-full border border-gray-200 focus:ring-2 focus:ring-blue-300 transition"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="overflow-y-auto max-h-[calc(100vh-250px)]">
+        {filteredChats.map(chat => {
+          const otherUserId = chat.idParticipantes.find(id => id !== userId);
+          const otherUser = users.find(u => u.id_usuario === otherUserId);
+
+          return otherUser ? (
+            <div 
+              key={chat._id}
+              onClick={() => onSelectChat(chat._id)}
+              className={`
+                flex items-center p-4 cursor-pointer transition 
+                ${activeChatId === chat._id 
+                  ? 'bg-blue-100 border-l-4 border-blue-600' 
+                  : 'hover:bg-blue-50'}
+              `}
+            >
+              <ImageWithAuth
+                imagePath={`user_imgs/${otherUser.url_img}`}
+                alt={`${otherUser.nombres} ${otherUser.apellidos}`}
+                className="w-12 h-12 rounded-full mr-4 object-cover border-2 border-white shadow-md"
+              />
+              <div className="flex-1">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-semibold text-gray-800">
+                    {otherUser.nombres} {otherUser.apellidos}
+                  </h3>
+                  {otherUser.rating && (
+                    <div className="flex items-center text-yellow-500">
+                      <Star className="w-4 h-4 mr-1" />
+                      <span className="text-sm">{otherUser.rating}</span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-sm text-gray-500 truncate">
+                  {chat.ultimoMensaje || 'Sin mensajes'}
+                </p>
+              </div>
+            </div>
+          ) : null;
+        })}
       </div>
     </div>
   );
-}
+};
 
-// Lista de mensajes del chat activo
-function MessageList({ mensajes, userId, users, chat, chatEndRef }: {
-  mensajes: Mensaje[]; userId: number; users: User[]; chat?: Chat; chatEndRef: React.RefObject<HTMLDivElement | null>;
-}) {
-  // Detectar si el usuario está abajo para solo hacer scroll si corresponde
-  const listRef = useRef<HTMLDivElement | null>(null);
-  const [isAtBottom, setIsAtBottom] = useState(true);
-
-  useEffect(() => {
-    const el = listRef.current;
-    if (!el) return;
-    const handleScroll = () => {
-      setIsAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 60);
-    };
-    el.addEventListener('scroll', handleScroll);
-    return () => el.removeEventListener('scroll', handleScroll);
-  }, []);
+// Componente de Mensajes
+const MessageList: React.FC<{
+  mensajes: Mensaje[];
+  userId: number;
+  users: User[];
+  activeChatId: string;
+}> = ({ mensajes, userId, users, activeChatId }) => {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isAtBottom && chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [mensajes, chatEndRef, isAtBottom]);
-
-  return (
-    <div
-      ref={listRef}
-      className="flex-1 overflow-y-auto px-6 py-4 bg-gradient-to-br from-blue-50 to-blue-100 flex flex-col-reverse custom-scrollbar"
-      style={{ minHeight: 0 }}
-    >
-      <div ref={chatEndRef} />
-      {[...mensajes].reverse().map(m => {
-        const isOwn = m.idEmisor === userId;
-        const otherUser = users.find(u => u.id_usuario === m.idEmisor);
-        return <MessageBubble key={m._idTemp || m._id} mensaje={m} isOwn={isOwn} user={otherUser} />;
-      })}
-    </div>
-  );
-}
-
-// Input para enviar mensajes - smart, estático y atractivo
-function MessageInput({ value, onChange, onSend, disabled }: {
-  value: string; onChange: (v: string) => void; onSend: () => void; disabled: boolean;
-}) {
-  const [focused, setFocused] = useState(false);
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && value.trim()) {
-      e.preventDefault();
-      onSend();
-    }
-  };
-  return (
-    <div className="px-6 py-4 bg-white border-t flex items-center gap-2 sticky bottom-0 z-20 shadow-[0_-2px_16px_-4px_rgba(0,0,80,0.07)]">
-      <button
-        tabIndex={-1}
-        className="p-2 rounded-full hover:bg-blue-50 transition text-blue-500"
-        title="Adjuntar (próximamente)"
-        disabled
-      >
-        <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" strokeWidth="1.5" d="M17.5 12.5v5a5 5 0 0 1-10 0v-9a5 5 0 1 1 10 0v7a3 3 0 1 1-6 0v-6"/></svg>
-      </button>
-      <input
-        className={`flex-1 border px-4 py-2 rounded-full transition-all duration-200 focus:outline-none ${focused ? 'ring-2 ring-blue-400 border-blue-400 bg-blue-50' : 'border-gray-300 bg-gray-100'} text-base`}
-        placeholder={disabled ? 'Conectando...' : 'Escribe tu mensaje y presiona Enter'}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        disabled={disabled}
-        maxLength={1000}
-        autoComplete="off"
-      />
-      <button
-        onClick={onSend}
-        disabled={disabled || !value.trim()}
-        className={`ml-2 p-2 rounded-full shadow-md transition-all duration-150 ${disabled || !value.trim()
-          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-          : 'bg-blue-600 text-white hover:bg-blue-700 scale-105 active:scale-95'}`}
-        style={{ boxShadow: '0 4px 16px -4px rgba(37,99,235,0.12)' }}
-        title="Enviar"
-      >
-        <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" strokeWidth="2" d="M4 20l16-8-16-8v6l10 2-10 2v6z"/></svg>
-      </button>
-    </div>
-  );
-}
-
-// --- Componente principal tipo Messenger ---
-export default function ChatInterface({
-  userId, users, chats, mensajes, socket,
-  activeChatId, onSend, onSelectUser, onSelectChat
-}: ChatInterfaceProps) {
-  const [texto, setTexto] = useState('');
-  const chatEndRef = useRef<HTMLDivElement>(null);
-
-  // Auto-scroll al último mensaje
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [mensajes, activeChatId]);
 
-  useEffect(() => {
-    if (!socket) return;
-    const handler = (msg: Mensaje) => {
-      if (msg.idChat === activeChatId) {
-        // Parent actualiza estado
-      }
-    };
-    socket.on('mensaje', handler);
-    return () => { socket.off('mensaje', handler); };
-  }, [socket, activeChatId]);
+  return (
+    <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-br from-blue-50 to-blue-100">
+      {mensajes.map((mensaje, index) => {
+        const isOwnMessage = mensaje.idEmisor === userId;
+        const sender = users.find(u => u.id_usuario === mensaje.idEmisor);
 
-  // Mensajes del chat activo
-  const mensajesActivos = mensajes.filter(m => m.idChat === activeChatId);
+        return (
+          <div 
+            key={mensaje._id || mensaje._idTemp} 
+            className={`flex mb-4 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+          >
+            {!isOwnMessage && sender && (
+              <ImageWithAuth
+                imagePath={`user_imgs/${sender.url_img}`}
+                alt={`${sender.nombres} ${sender.apellidos}`}
+                className="w-8 h-8 rounded-full mr-2 object-cover"
+              />
+            )}
+            <div 
+              className={`
+                max-w-md p-3 rounded-2xl shadow-md 
+                ${isOwnMessage 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-white text-gray-800'}
+              `}
+            >
+              <p>{mensaje.contenido}</p>
+              <div className="text-xs mt-1 opacity-70 flex justify-between items-center">
+                <span>{new Date(mensaje.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                {isOwnMessage && (
+                  <CheckCircle 
+                    className={`w-4 h-4 ${
+                      mensaje.estado === 'leido' 
+                        ? 'text-green-400' 
+                        : mensaje.estado === 'entregado' 
+                          ? 'text-blue-300' 
+                          : 'text-gray-300'
+                    }`} 
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      <div ref={messagesEndRef} />
+    </div>
+  );
+};
 
-  // Chat y usuario activo
-  const chatActivo = chats.find(c => c._id === activeChatId);
-  const otherId = chatActivo?.idParticipantes.find(id => id !== userId);
-  const otherUser = users.find(u => u.id_usuario === otherId);
+// Componente de Input de Mensaje
+const MessageInput: React.FC<{
+  onSend: (mensaje: string) => void;
+  disabled?: boolean;
+}> = ({ onSend, disabled = false }) => {
+  const [mensaje, setMensaje] = useState('');
+
+  const handleSend = () => {
+    if (mensaje.trim()) {
+      onSend(mensaje);
+      setMensaje('');
+    }
+  };
 
   return (
-    <div className="flex h-full bg-blue-50 rounded-lg shadow overflow-hidden" style={{ minHeight: '600px', minWidth: '900px' }}>
+    <div className="bg-white p-4 border-t flex items-center space-x-2">
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        disabled={disabled}
+        className="text-gray-500 hover:text-blue-600"
+      >
+        <Paperclip />
+      </Button>
+      
+      <div className="flex-1">
+        <input
+          type="text"
+          placeholder="Escribe un mensaje..."
+          value={mensaje}
+          onChange={(e) => setMensaje(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+          disabled={disabled}
+          className="w-full p-2 border rounded-full focus:ring-2 focus:ring-blue-300 transition"
+        />
+      </div>
+      
+      <Button 
+        variant="blue" 
+        size="icon" 
+        onClick={handleSend} 
+        disabled={disabled || !mensaje.trim()}
+      >
+        <Send />
+      </Button>
+    </div>
+  );
+};
+
+// Componente Principal de Chat
+export default function ChatInterface({
+  userId, 
+  users, 
+  chats, 
+  mensajes, 
+  socket,
+  activeChatId, 
+  onSend, 
+  onSelectUser, 
+  onSelectChat
+}: ChatInterfaceProps) {
+  const [filteredMensajes, setFilteredMensajes] = useState<Mensaje[]>([]);
+  const [activeChat, setActiveChat] = useState<Chat | null>(null);
+
+  useEffect(() => {
+    // Filtrar mensajes del chat activo
+    const filtered = mensajes.filter(m => m.idChat === activeChatId);
+    setFilteredMensajes(filtered);
+
+    // Encontrar el chat activo
+    const chat = chats.find(c => c._id === activeChatId);
+    setActiveChat(chat || null);
+  }, [activeChatId, chats, mensajes]);
+
+  const handleSendMessage = (texto: string) => {
+    if (activeChatId) {
+      onSend(texto, activeChatId);
+    }
+  };
+
+  // Si no hay chat seleccionado, mostrar la lista de chats
+  if (!activeChatId) {
+    return (
+      <div className="flex h-full">
+        <ChatSidebar
+          chats={chats}
+          users={users}
+          userId={userId}
+          activeChatId={activeChatId}
+          onSelectChat={onSelectChat}
+          onSelectUser={onSelectUser}
+        />
+        <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
+          <MessageCircle className="w-24 h-24 text-blue-600 mb-6" />
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">Bienvenido a Tayta Chat</h2>
+          <p className="text-gray-600 text-center max-w-md mb-8">
+            Selecciona una conversación o inicia un nuevo chat para comenzar a conectar con emprendedores locales.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Obtener información del otro usuario en el chat
+  const otherUserId = activeChat?.idParticipantes.find(id => id !== userId);
+  const otherUser = users.find(u => u.id_usuario === otherUserId);
+
+  return (
+    <div className="flex h-full">
       <ChatSidebar
         chats={chats}
         users={users}
         userId={userId}
         activeChatId={activeChatId}
-        onSelectUser={onSelectUser}
         onSelectChat={onSelectChat}
+        onSelectUser={onSelectUser}
       />
-      <main className="flex-1 flex flex-col h-full">
-        {activeChatId && chatActivo ? (
-          <>
-            <ChatHeader user={otherUser} />
-            <MessageList
-              mensajes={mensajesActivos}
-              userId={userId}
-              users={users}
-              chat={chatActivo}
-              chatEndRef={chatEndRef}
-            />
-            <MessageInput
-              value={texto}
-              onChange={setTexto}
-              onSend={() => {
-                if (texto.trim()) {
-                  onSend(texto, activeChatId);
-                  setTexto('');
-                }
-              }}
-              disabled={!socket}
-            />
-          </>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
-            <img src="/messenger-illustration.svg" alt="Selecciona un chat" className="w-32 h-32 mb-4 opacity-60" />
-            <span>Selecciona un chat para comenzar a conversar</span>
+      
+      <div className="flex-1 flex flex-col">
+        {/* Header del Chat */}
+        {otherUser && (
+          <div className="bg-white p-4 border-b flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <ImageWithAuth
+                imagePath={`user_imgs/${otherUser.url_img}`}
+                alt={`${otherUser.nombres} ${otherUser.apellidos}`}
+                className="w-12 h-12 rounded-full object-cover border-2 border-blue-300"
+              />
+              <div>
+                <h3 className="text-xl font-bold text-gray-800">
+                  {otherUser.nombres} {otherUser.apellidos}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {otherUser.rating ? `Calificación: ${otherUser.rating}/5` : 'Vendedor local'}
+                </p>
+              </div>
+            </div>
+            <div className="flex space-x-2">
+              <Button variant="ghost" size="icon" className="text-gray-500">
+                <User />
+              </Button>
+            </div>
           </div>
         )}
-      </main>
+
+        {/* Lista de Mensajes */}
+        <MessageList
+          mensajes={filteredMensajes}
+          userId={userId}
+          users={users}
+          activeChatId={activeChatId}
+        />
+
+        {/* Input de Mensaje */}
+        <MessageInput 
+          onSend={handleSendMessage} 
+          disabled={!activeChatId}
+        />
+      </div>
     </div>
   );
 }

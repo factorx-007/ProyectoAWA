@@ -34,8 +34,8 @@ function validarTarjeta(numero: string) {
   return suma % 10 === 0;
 }
 
-export default function PaymentModal() {
-  const [isOpen, setIsOpen] = useState(false);
+export default function PaymentModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const [localIsOpen, setLocalIsOpen] = useState(isOpen);
   const [cardNumber, setCardNumber] = useState('');
   const [expiration, setExpiration] = useState('');
   const [cvc, setCvc] = useState('');
@@ -54,9 +54,10 @@ export default function PaymentModal() {
 
 
 
-  const openModal = () => setIsOpen(true);
+  const openModal = () => setLocalIsOpen(true);
   const closeModal = () => {
-    setIsOpen(false);
+    setLocalIsOpen(false);
+    onClose();
     setCardNumber('');
     setExpiration('');
     setCvc('');
@@ -316,11 +317,11 @@ export default function PaymentModal() {
     };
 
     fetchCarritoYTotal();
-  }, [user?.id, isOpen]);
+  }, [user?.id, localIsOpen]);
 
   useEffect(() => {
     const handleClickOutside = (e: { target: any; }) => {
-      if (isOpen && modalRef.current && !modalRef.current.contains(e.target)) {
+      if (localIsOpen && modalRef.current && !modalRef.current.contains(e.target)) {
         closeModal();
       }
     };
@@ -329,6 +330,10 @@ export default function PaymentModal() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
+  }, [localIsOpen]);
+
+  useEffect(() => {
+    setLocalIsOpen(isOpen);
   }, [isOpen]);
 
   return (
@@ -341,7 +346,7 @@ export default function PaymentModal() {
         Proceder al pago
       </button>
 
-      {isOpen && (
+      {localIsOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/30">
 
           <div
