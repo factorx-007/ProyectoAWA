@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { FiArrowLeft } from 'react-icons/fi';
 import { useAuth } from '@/providers/AuthProvider';
 import PaymentModal from '@/components/client/cart/PaymentModal';
+import { Toaster } from 'react-hot-toast';
 
 export interface CartProduct {
   id: number;
@@ -191,6 +192,7 @@ export default function CartPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <Toaster />
       <div className="flex items-center mb-6">
         <Link href="/client" className="flex items-center text-blue-600 hover:text-blue-800">
           <FiArrowLeft className="mr-1" />
@@ -253,8 +255,6 @@ export default function CartPage() {
                   </div>
                 </div>
               </div>
-
-            
 
         <PaymentModal isOpen={showModal} onClose={() => setShowModal(false)} />
             </div>

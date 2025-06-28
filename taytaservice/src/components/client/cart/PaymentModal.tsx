@@ -2,6 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/providers/AuthProvider';
+import { Toaster, toast } from 'react-hot-toast';
+import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
 
 function validarTarjeta(numero: string) {
   const limpio = numero.replace(/[\s-]/g, '');
@@ -43,6 +47,10 @@ export default function PaymentModal() {
   const [carritoId, setCarritoId] = useState<number | null>(null);
   const [total, setTotal] = useState<number>(0);
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://taytaback.onrender.com';
+
+  const [paying, setPaying] = useState(false);
+
+  const router = useRouter();
 
 
 
@@ -92,11 +100,17 @@ export default function PaymentModal() {
     e.preventDefault();
     setError('');
 
+    setPaying(true);
+
     const error = validarCampos(name, cardNumber, expiration, cvc, setError);
-    if (error) return;
+    if (error) {
+      setPaying(false);
+      return;
+    };
 
     if (!carritoId) {
       setError('No se encontró el carrito actual');
+      setPaying(false);
       return;
     }
 
@@ -106,7 +120,7 @@ export default function PaymentModal() {
     if (pagoExitoso) {
       try {
         const token = localStorage.getItem('auth-token');
-        await fetch(`${API_BASE_URL}/api/carritos/${carritoId}`, {
+        const resEstado = await fetch(`${API_BASE_URL}/api/carritos/${carritoId}`, {
           method: 'PATCH',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -119,7 +133,7 @@ export default function PaymentModal() {
         });
 
         // Cambiar fecha_compra
-        await fetch(`${API_BASE_URL}/api/carritos/${carritoId}`, {
+        const resFecha = await fetch(`${API_BASE_URL}/api/carritos/${carritoId}`, {
           method: 'PATCH',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -130,12 +144,21 @@ export default function PaymentModal() {
             valor: new Date().toISOString()
           })
         });
-        alert('¡Pago realizado y carrito actualizado!');
-        closeModal();
+        if (resEstado.ok && resFecha.ok) {
+          toast.success('¡Pago realizado y carrito actualizado!');
+          closeModal();
+          router.push('/client/orders');
+        } else {
+          toast.error('Pago realizado, pero hubo un error al actualizar el carrito.');
+        }
       } catch (err) {
         console.log(err);
-        alert('Pago realizado, pero hubo un error al actualizar el carrito.');
+        toast.error('Pago realizado, pero hubo un error al actualizar el carrito.');
+      } finally {
+        setPaying(false);
       }
+    } else {
+      toast.error('No se pudo procesar el pago.');
     }
   };
 
@@ -199,16 +222,15 @@ export default function PaymentModal() {
       const data = await response.json();
 
       if (response.ok) {
-        alert(`✅ ${data.message}. Saldo restante: $${data.saldo_restante}`);
         closeModal();
         return true;
       } else {
-        alert(`❌ Error: ${data.error}`);
+        toast.error(`❌ Error: ${data.error}`);
         return false;
       }
     } catch (error) {
       console.error('Error al procesar el pago:', error);
-      alert('❌ Ocurrió un error al procesar el pago. Inténtalo de nuevo.');
+      toast.error('❌ Ocurrió un error al procesar el pago. Inténtalo de nuevo.');
       return false;
     }
   };
@@ -254,6 +276,21 @@ export default function PaymentModal() {
         });
         const productos = await productosRes.json();
 
+        //actualizar si no es_servicio:
+        for (const prod of productos) {
+          if (!prod.es_servicio) {
+            console.log("--->" + prod.es_servicio);
+            await fetch(`${API_BASE_URL}/api/productos/restar-stock/${prod.id_item}`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ cantidad: prod.cantidad })
+            });
+          }
+        }
+
         // 3. Calcular el total sumando precio * cantidad de cada producto
         let totalCarrito = 0;
         for (const prod of productos) {
@@ -296,6 +333,7 @@ export default function PaymentModal() {
 
   return (
     <div>
+      <Toaster />
       <button
         onClick={openModal}
         className="bg-gradient-to-r from-green-500 to-teal-500 text-white py-3 px-6 rounded-lg shadow-md hover:from-green-600 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-300 transform hover:scale-[1.02]"
@@ -304,7 +342,8 @@ export default function PaymentModal() {
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black bg-opacity-30">
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/30">
+
           <div
             ref={modalRef}
             className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 animate-fade-in"
@@ -397,9 +436,13 @@ export default function PaymentModal() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg shadow-md hover:from-teal-600 hover:to-green-600 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition-all transform hover:scale-[1.03]"
+                  className="px-5 py-2.5 bg-gradient-to-r from-teal-500 to-green-500 text-white rounded-lg shadow-md hover:from-teal-600 hover:to-green-600 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition-all transform hover:scale-[1.03] flex items-center justify-center"
+                  disabled={paying}
                 >
-                  Pagar
+                  {paying ? (
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  ) : null}
+                  {paying ? 'Procesando...' : 'Pagar'}
                 </button>
               </div>
             </form>

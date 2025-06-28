@@ -33,6 +33,11 @@ export const ImageWithAuth: React.FC<ImageWithAuthProps> = ({ imagePath, alt = '
         });
 
         if (!response.ok) {
+          if (response.status === 404) {
+            console.error(`Imagen no encontrada en el servidor: ${imagePath}`);
+          } else {
+            console.error(`Error al obtener la imagen, código de estado: ${response.status}`);
+          }
           // Si la imagen no se puede cargar, usar imagen por defecto
           setImgSrc('/images/default-product.jpg');
           return;

@@ -1,9 +1,15 @@
 import { Producto } from '@/features/types';
 import axios from 'axios';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+
 const getToken = (): string => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('auth-token');
+    console.log("---------------------------------------------------------------------------");
+    
+    console.log(token);
+    
     if (!token) throw new Error('No se encontró token de autenticación');
     return token;
   }
@@ -49,9 +55,9 @@ export const ProductoService = {
   async getProductosCompletos(): Promise<any[]> {
     try {
       const [itemsResponse, productosResponse, usuariosResponse] = await Promise.all([
-        axios.get<any[]>('/api/items', headers()),
-        axios.get<any[]>('/api/productos', headers()),
-        axios.get<any[]>('/api/usuarios', headers())
+        axios.get<any[]>(`${API_BASE_URL}/api/items`, headers()),
+        axios.get<any[]>(`${API_BASE_URL}/api/productos`, headers()),
+        axios.get<any[]>(`${API_BASE_URL}/api/usuarios`, headers())
       ]);
 
       return itemsResponse.data.map((item: any) => {

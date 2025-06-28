@@ -16,7 +16,7 @@ export default function OrdersPage() {
       setLoading(true);
       try {
         const token = localStorage.getItem('auth-token');
-        // 1. Obtener carritos con estado 'V'
+        
         const res = await fetch(`${API_BASE_URL}/api/carritos/buscar`, {
           method: 'POST',
           headers: {
@@ -29,14 +29,18 @@ export default function OrdersPage() {
           })
         });
         const carritos = await res.json();
-        const ordenes = Array.isArray(carritos)
+        let ordenes = Array.isArray(carritos)
           ? carritos.filter((c: any) => c.estado === 'V')
           : [];
+        
+        ordenes.sort((a, b) => {
+          const fechaA = a.fecha_compra ? new Date(a.fecha_compra) : new Date(0);
+          const fechaB = b.fecha_compra ? new Date(b.fecha_compra) : new Date(0);
+          return fechaB.getTime() - fechaA.getTime();
+        });
 
-        // 2. Para cada carrito, obtener productos y detalles
         const ordersData = await Promise.all(
           ordenes.map(async (carrito: any) => {
-            // Productos del carrito
             const productosRes = await fetch(`${API_BASE_URL}/api/carritos-productos/buscar`, {
               method: 'POST',
               headers: {
@@ -49,8 +53,6 @@ export default function OrdersPage() {
               })
             });
             const productos = await productosRes.json();
-
-            // Detalles de cada producto
             const items = await Promise.all(
               productos.map(async (prod: any) => {
                 const itemRes = await fetch(`${API_BASE_URL}/api/items/buscar`, {
@@ -73,7 +75,6 @@ export default function OrdersPage() {
               })
             );
 
-            // Calcular total
             const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
             return {
@@ -81,16 +82,18 @@ export default function OrdersPage() {
               date: carrito.fecha_compra
                 ? new Date(carrito.fecha_compra).toLocaleDateString()
                 : '',
+              originalDate: carrito.fecha_compra,
               status: 'Completado',
               items,
               total,
-              trackingNumber: carrito.id_carrito // o algún campo de tracking si tienes
+              trackingNumber: carrito.id_carrito
             };
           })
         );
 
         setOrders(ordersData);
       } catch (err) {
+        console.error('Error fetching orders:', err);
         setOrders([]);
       } finally {
         setLoading(false);
