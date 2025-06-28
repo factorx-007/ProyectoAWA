@@ -42,7 +42,7 @@ export default function PaymentModal() {
   const { user } = useAuth();
   const [carritoId, setCarritoId] = useState<number | null>(null);
   const [total, setTotal] = useState<number>(0);
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://taytaback.onrender.com';
 
 
 

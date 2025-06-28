@@ -18,7 +18,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     const token = localStorage.getItem('auth-token');
     if (!token) return;
 
-    const s = io('http://localhost:4000', {//error acá
+    const s = io('https://taytaback.onrender.com', {//error acá
       auth: { token },
     });
 

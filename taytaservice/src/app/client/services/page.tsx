@@ -7,6 +7,7 @@ import { ServiceCategoryFilter } from '@/components/client/service/ServiceCatego
 import { Search } from 'lucide-react';
 import axios from 'axios';
 import { BasicUser } from '@/types';
+import ProductoCard from '@/components/client/products/ProductoCard';
 
 const getToken = (): string => {
   if (typeof window !== 'undefined') {
@@ -53,6 +54,7 @@ export default function ServicesPage() {
             const vendedor = vendedores.find((v: BasicUser) => v.id_usuario === servicio.id_vendedor);
             return {
               ...servicio,
+              imagen: servicio.url_img || servicio.imagen,
               categoryName: categoriasData.find((cat: any) => cat.id_categoria === servicio.id_categoria)?.nombre || 'Sin categoría',
               vendedor: vendedor ? {
                 id_usuario: vendedor.id_usuario,
@@ -121,12 +123,19 @@ export default function ServicesPage() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
             {filteredServices.map((service) => (
-              <ServiceCard
+              <ProductoCard
                 key={service.id_item}
-                service={{
-                  ...service,
-                  categoria: service.categoryName,
-                  vendedor: service.vendedor
+                producto={{
+                  id_item: service.id_item,
+                  nombre: service.nombre || 'Servicio sin nombre',
+                  descripcion: service.descripcion || 'Sin descripción',
+                  precio: service.precio || 0,
+                  estado: service.estado || 'A',
+                  categoria: service.categoryName || 'Sin categoría',
+                  vendedor: service.vendedor || null,
+                  url_img: service.imagen || service.url_img || '',
+                  es_servicio: true,
+                  rating: 4.5
                 }}
                 onDelete={(id: number) => {
                   setServices((prev) => prev.filter((s) => s.id_item !== id));

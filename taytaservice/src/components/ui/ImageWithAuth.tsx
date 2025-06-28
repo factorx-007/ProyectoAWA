@@ -9,7 +9,7 @@ interface ImageWithAuthProps {
   style?: React.CSSProperties;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://taytaback.onrender.com';
 
 export const ImageWithAuth: React.FC<ImageWithAuthProps> = ({ imagePath, alt = '', className = '' }) => {
   const [imgSrc, setImgSrc] = useState<string | null>(null);
@@ -17,6 +17,11 @@ export const ImageWithAuth: React.FC<ImageWithAuthProps> = ({ imagePath, alt = '
   useEffect(() => {
     const fetchImage = async () => {
       try {
+        // Si no hay ruta de imagen, usar imagen por defecto
+        if (!imagePath || imagePath === 'undefined') {
+          setImgSrc('/images/default-product.jpg');
+          return;
+        }
         
         const token = localStorage.getItem('auth-token');
         if (!token) throw new Error('Token no encontrado');
@@ -28,7 +33,9 @@ export const ImageWithAuth: React.FC<ImageWithAuthProps> = ({ imagePath, alt = '
         });
 
         if (!response.ok) {
-          throw new Error('Error al obtener imagen');
+          // Si la imagen no se puede cargar, usar imagen por defecto
+          setImgSrc('/images/default-product.jpg');
+          return;
         }
 
         const blob = await response.blob();
@@ -36,6 +43,8 @@ export const ImageWithAuth: React.FC<ImageWithAuthProps> = ({ imagePath, alt = '
         setImgSrc(url);
       } catch (error) {
         console.error('No se pudo cargar la imagen:', error);
+        // En caso de cualquier error, usar imagen por defecto
+        setImgSrc('/images/default-product.jpg');
       }
     };
 

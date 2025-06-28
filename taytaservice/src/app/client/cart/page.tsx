@@ -24,7 +24,7 @@ export default function CartPage() {
   const [cartItems, setCartItems] = useState<CartProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://taytaback.onrender.com';
 
   useEffect(() => {
     const fetchCart = async () => {

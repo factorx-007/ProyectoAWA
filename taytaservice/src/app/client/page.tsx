@@ -7,6 +7,7 @@ import { ServiceCarousel } from '@/components/client/service/ServiceCarousel';
 import { PromoBanner } from '@/components/client/products/PromoBanner';
 import axios from 'axios';
 import { BasicUser } from '@/types';
+import ProductoCard from '@/components/client/products/ProductoCard';
 
 const getToken = (): string => {
   if (typeof window !== 'undefined') {
@@ -61,7 +62,7 @@ export default function ClientHomePage() {
             id: producto.id_item,
             name: producto.nombre,
             price: producto.precio,
-            image: producto.image || '/images/default-product.jpg',
+            imagen: producto.url_img || producto.imagen,
             rating: producto.rating || 4,
             stock: producto.stock || 0,
             estado: producto.estado || 'A',
@@ -79,7 +80,7 @@ export default function ClientHomePage() {
             id: servicio.id_item,
             name: servicio.nombre,
             price: servicio.precio,
-            image: servicio.image || '/images/default-service.jpg',
+            image: servicio.url_img || servicio.image || '/images/default-service.jpg',
             rating: servicio.rating || 5,
             description: servicio.descripcion || 'Servicio profesional',
             estado: servicio.estado || 'A',
@@ -124,12 +125,25 @@ export default function ClientHomePage() {
         <h2 className="text-2xl font-bold mb-6">Productos Populares</h2>
         {featuredProducts.length > 0 ? (
           <>
-            <ProductGrid products={featuredProducts.map(p => ({
-              ...p,
-              categoria: p.categoria,
-              vendedor: p.vendedor,
-              estado: p.estado === 'A' ? 'Disponible' : 'Agotado'
-            }))} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {featuredProducts.map((producto) => (
+                <ProductoCard 
+                  key={producto.id}
+                  producto={{
+                    id_item: producto.id,
+                    nombre: producto.name,
+                    precio: producto.price,
+                    url_img: producto.imagen,
+                    estado: producto.estado === 'A' ? 'A' : 'I',
+                    stock: producto.stock,
+                    categoria: producto.categoria,
+                    vendedor: producto.vendedor,
+                    es_servicio: false,
+                    rating: producto.rating
+                  }}
+                />
+              ))}
+            </div>
             <div className="mt-6 text-center">
               <a 
                 href="/products" 
@@ -151,12 +165,25 @@ export default function ClientHomePage() {
         <h2 className="text-2xl font-bold mb-6">Servicios Destacados</h2>
         {featuredServices.length > 0 ? (
           <>
-            <ServiceCarousel services={featuredServices.map(s => ({
-              ...s,
-              estado: s.estado === 'A' ? 'Disponible' : 'No disponible',
-              categoria: s.categoria,
-              vendedor: s.vendedor
-            }))} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {featuredServices.map((servicio) => (
+                <ProductoCard 
+                  key={servicio.id}
+                  producto={{
+                    id_item: servicio.id,
+                    nombre: servicio.name,
+                    precio: servicio.price,
+                    url_img: servicio.image,
+                    estado: servicio.estado === 'A' ? 'A' : 'I',
+                    descripcion: servicio.description,
+                    categoria: servicio.categoria,
+                    vendedor: servicio.vendedor,
+                    es_servicio: true,
+                    rating: servicio.rating
+                  }}
+                />
+              ))}
+            </div>
             <div className="mt-6 text-center">
               <a 
                 href="/services" 

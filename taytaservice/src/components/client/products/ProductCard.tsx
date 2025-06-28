@@ -105,7 +105,7 @@ export function ProductCard({ product }: ProductCardProps) {
       <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden mb-2 flex items-center justify-center">
         {imagen && !imgError ? (
           <img 
-            src={imagen} 
+            src={`/api/uploads/item_imgs/${imagen}`} 
             alt={nombre} 
             onError={() => setImgError(true)}
             className="object-cover w-full h-full"

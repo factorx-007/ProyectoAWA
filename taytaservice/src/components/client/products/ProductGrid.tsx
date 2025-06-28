@@ -1,39 +1,28 @@
 // src/components/client/products/ProductGrid.tsx
 import ProductoCard from './ProductoCard';
-import { BasicUser } from '@/types';
 
 interface ProductGridProps {
-  products: Array<{
-    id: number;
-    name: string;
-    price: number;
-    image?: string;
-    estado?: string;
-    stock?: number;
-    categoria?: string;
-    vendedor?: BasicUser | null;
-    url_img?: string;
-  }>;
-  onDelete?: (id: number) => void;
+  products: any[];
 }
 
-export const ProductGrid = ({ products, onDelete }: ProductGridProps) => {
+export const ProductGrid: React.FC<ProductGridProps> = ({ products }) => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      {products.map((product) => (
-        <ProductoCard
-          key={product.id}
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      {products.map((producto) => (
+        <ProductoCard 
+          key={producto.id_item || producto.id}
           producto={{
-            id_producto: product.id,
-            nombre: product.name,
-            precio: product.price,
-            image: product.url_img,
-            estado: product.estado,
-            stock: product.stock,
-            categoria: product.categoria,
-            vendedor: product.vendedor
+            id_item: producto.id_item || producto.id,
+            nombre: producto.name || producto.nombre,
+            precio: producto.price || producto.precio,
+            url_img: producto.imagen || producto.url_img,
+            estado: producto.estado === 'A' ? 'A' : 'I',
+            stock: producto.stock,
+            categoria: producto.categoria,
+            vendedor: producto.vendedor,
+            es_servicio: false,
+            rating: producto.rating || 4
           }}
-          onDelete={onDelete}
         />
       ))}
     </div>

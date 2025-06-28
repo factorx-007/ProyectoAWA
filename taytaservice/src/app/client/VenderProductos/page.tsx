@@ -6,8 +6,10 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Search, Plus } from 'lucide-react';
+import { useAuth } from '@/providers/AuthProvider';
 
 export default function VenderProductos() {
+  const { user } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [categorias, setCategorias] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,6 +21,11 @@ export default function VenderProductos() {
 
   useEffect(() => {
     const cargarDatos = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const [itemsData, categoriasDataRaw] = await Promise.all([
           ProductoService.getProductosCompletos(),
@@ -26,7 +33,9 @@ export default function VenderProductos() {
         ]);
         const categoriasData = categoriasDataRaw as any[];
         
-        const itemsFormateados = itemsData.map((item: any) => ({
+        const itemsDelUsuario = itemsData.filter((item: any) => item.id_vendedor === Number(user.id));
+
+        const itemsFormateados = itemsDelUsuario.map((item: any) => ({
           ...item,
           categoryName: categoriasData.find((cat: any) => cat.id_categoria === item.id_categoria)?.nombre || 'Sin categoría'
         }));
@@ -40,7 +49,7 @@ export default function VenderProductos() {
       }
     };
     cargarDatos();
-  }, []);
+  }, [user]);
 
   const filteredItems = items.filter(item => {
     const matchesSearch = item.nombre.toLowerCase().includes(searchTerm.toLowerCase());
@@ -72,6 +81,17 @@ export default function VenderProductos() {
     return (
       <div className="container mx-auto p-4 flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="container mx-auto p-4 text-center">
+        <p>Debes iniciar sesión para ver tus productos</p>
+        <Link href="/auth/login">
+          <Button>Iniciar Sesión</Button>
+        </Link>
       </div>
     );
   }

@@ -90,7 +90,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       const folderName = String(folder || 'item_imgs');
       
       // Crear la URL con el parámetro de consulta
-      const uploadUrl = new URL('http://localhost:4000/api/upload-img');
+      const uploadUrl = new URL('https://taytaback.onrender.com/api/upload-img');
       uploadUrl.searchParams.append('carpeta', folderName);
 
       // Agregar el ID del ítem si está disponible

@@ -1,4 +1,3 @@
-
 "use client";
 import { Button } from "@/components/ui/Button";
 import { Edit, Trash2, ImageOff } from "lucide-react";
@@ -53,7 +52,7 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({ onEdit, onDelete }
           tipoImagen: typeof prod.imagen,
           valorImagen: prod.imagen,
           urlCompleta: prod.imagen ? 
-            `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/uploads/item_imgs/${prod.imagen}` : 
+            `${process.env.NEXT_PUBLIC_API_URL || 'https://taytaback.onrender.com'}/api/uploads/item_imgs/${prod.imagen}` : 
             null
         });
       });
@@ -137,7 +136,7 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({ onEdit, onDelete }
                             ID: {prod.id_item}
                           </div>
                           <AuthImage
-                            src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/uploads/item_imgs/${prod.imagen}`}
+                            src={`${process.env.NEXT_PUBLIC_API_URL || 'https://taytaback.onrender.com'}/api/uploads/item_imgs/${prod.imagen}`}
                             alt={prod.nombre}
                             width={40}
                             height={40}

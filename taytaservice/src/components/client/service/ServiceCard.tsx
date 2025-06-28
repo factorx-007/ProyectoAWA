@@ -78,9 +78,9 @@ export const ServiceCard = ({ service, onDelete }: ServiceCardProps) => {
 
       {/* Imagen del servicio */}
       <div className="relative h-48 md:h-56 overflow-hidden flex items-center justify-center bg-gradient-to-t from-gray-200 to-white dark:from-gray-800 dark:to-gray-900">
-        {service.imagen || service.imagen_url ? (
+        {service.imagen_url || service.imagen || service.url_img ? (
           <img
-            src={service.imagen_url || service.imagen}
+            src={`/api/uploads/item_imgs/${service.imagen_url || service.imagen || service.url_img}`}
             alt={service.nombre}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 rounded-t-2xl"
             onError={() => setImageError(true)}

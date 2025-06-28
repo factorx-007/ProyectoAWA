@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useRouter } from 'next/navigation';
 
 const api = axios.create({
-  baseURL: 'http://localhost:4000/api'
+  baseURL: 'https://taytaback.onrender.com/api'
 });
 
 // Variable para almacenar la función de logout
