@@ -66,7 +66,20 @@ module.exports = (sequelize, DataTypes) => {
     fecha_y_hora: {
       type: DataTypes.DATE,
       defaultValue: sequelize.literal('CURRENT_TIMESTAMP')
-    }
+    },
+    nro_cuenta: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      validate: {
+        notEmpty: true,
+      },
+    }, iv:{
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      validate: {
+        notEmpty: true,
+      },
+    },
   }, {
     sequelize,
     modelName: 'Usuario',

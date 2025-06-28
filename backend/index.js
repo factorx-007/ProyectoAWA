@@ -72,6 +72,7 @@ app.use('/api/usuarios', (req, res, next) => {
   }
   authMiddleware(req, res, next);
 }, usuarioRoutes);
+
 app.use('/api/categorias', require('./auth/authMiddleware'), require('./routes/categoriaRoutes'));
 app.use('/api/motivos-denuncia', require('./auth/authMiddleware'), require('./routes/motivoDenunciaRoutes'));
 app.use('/api/items', require('./auth/authMiddleware'), require('./routes/itemRoutes'));

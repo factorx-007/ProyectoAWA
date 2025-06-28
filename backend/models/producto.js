@@ -1,4 +1,3 @@
-// MODELO: productos
 'use strict';
 
 module.exports = (sequelize, DataTypes) => {
@@ -11,7 +10,8 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: false,
       validate: {
-        notEmpty: true
+        notEmpty: true,
+        min: 0
       }
     }
   }, {

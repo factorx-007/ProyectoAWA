@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const BaseService = require('./BaseService');
 const { Usuario } = require('../models');
 const { sequelize } = require('../models');
+const crypto = require('crypto');
 
 class UsuarioService extends BaseService {
   constructor() {
@@ -68,6 +69,68 @@ class UsuarioService extends BaseService {
         total_pagado: venta.Item.precio * venta.cantidad
       };
     });
+  }
+
+  encryptAccountNumber(accountNumber) {
+    const algorithm = 'aes-256-cbc';
+    const ivLength = 16;
+    const iv = crypto.randomBytes(ivLength);
+    const key = Buffer.from(process.env.SECRET_KEY.padEnd(32, '0').slice(0, 32), 'utf-8');
+
+    const cipher = crypto.createCipheriv(algorithm, key, iv);
+    let encrypted = cipher.update(accountNumber, 'utf-8', 'hex');
+    encrypted += cipher.final('hex');
+
+    return { encryptedData: encrypted, iv: iv.toString('hex') };
+  }
+
+  decryptAccountNumber(encryptedData, iv) {
+    const algorithm = 'aes-256-cbc';
+    const key = Buffer.from(process.env.SECRET_KEY.padEnd(32, '0').slice(0, 32), 'utf-8');
+    const ivBuffer = Buffer.from(iv, 'hex');
+
+    const decipher = crypto.createDecipheriv(algorithm, key, ivBuffer);
+    let decrypted = decipher.update(encryptedData, 'hex', 'utf-8');
+    decrypted += decipher.final('utf-8');
+
+    return decrypted;
+  }
+
+  async setNroCuenta(nro_cuenta, id_usuario) {
+    try {
+      const { encryptedData, iv } = this.encryptAccountNumber(nro_cuenta);
+      const usuario = await Usuario.findByPk(id_usuario);
+
+      if (!usuario) {
+        throw new Error('Usuario no encontrado');
+      }
+      usuario.nro_cuenta = encryptedData;
+      usuario.iv = iv;
+      await usuario.save();
+
+      return usuario;
+    } catch (error) {
+      throw new Error(`Error al actualizar el número de cuenta: ${error.message}`);
+    }
+  }
+
+  async getNroCuenta(id_usuario) {
+    try {
+      const usuario = await Usuario.findByPk(id_usuario);
+      if (!usuario) {
+        throw new Error('Usuario no encontrado');
+      }
+
+      if (!usuario.nro_cuenta || !usuario.iv) {
+        throw new Error('El usuario consultado no tiene un número de cuenta registrado');
+      }
+
+      const decryptedAccountNumber = this.decryptAccountNumber(usuario.nro_cuenta, usuario.iv);
+
+      return decryptedAccountNumber;
+    } catch (error) {
+      throw new Error(`Error al obtener el número de cuenta: ${error.message}`);
+    }
   }
 
 
